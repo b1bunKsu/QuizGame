@@ -1517,6 +1517,14 @@ function showQuestion() {
     <div class="quiz-shell screen-enter options-concealed">
       <header class="quiz-header">
 
+              <button
+          id="quit-button"
+          class="quit-button"
+          type="button"
+        >
+          中断
+        </button>
+
         <div class="hud-panel rank-panel-web">
           <div class="hud-caption" id="rank-name">
             ${state.mode === 'DEBUG'
@@ -1645,6 +1653,20 @@ function showQuestion() {
   questionInstance.render();
   state.activeQuestion = questionInstance;
 
+  const quitButton = app.querySelector('#quit-button');
+
+  if (quitButton) {
+    quitButton.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      SoundManager.playSe("kaitou");
+      console.log('中断ボタンが押されました');
+
+      quitGame();
+    });
+  }
+
 
   if (state.mode === 'DEBUG') {
 
@@ -1771,6 +1793,46 @@ function showQuestion() {
   }
 }
 
+function quitGame() {
+
+  console.log('ゲームを中断します');
+
+  // 二重クリック防止
+  const quitButton = app.querySelector('#quit-button');
+
+  if (quitButton) {
+    quitButton.disabled = true;
+  }
+
+  // 入力を停止
+  state.locked = true;
+  setQuestionInputEnabled(false);
+
+  // タイマー・待機処理・アニメーションを停止
+  clearTimer();
+
+  // 問題固有の処理を終了
+  if (state.activeQuestion) {
+    state.activeQuestion.dispose();
+    state.activeQuestion = null;
+  }
+
+  // キーボードイベントを解除
+  if (state.typingKeyHandler) {
+    document.removeEventListener(
+      'keydown',
+      state.typingKeyHandler
+    );
+    state.typingKeyHandler = null;
+  }
+
+  // 全国正解率の取得結果を無効化
+  ++nationalRateRequestSequence;
+  nationalRateSnapshot = null;
+
+  // リザルト画面へ
+  result(true);
+}
 
 function tick() {
   if (state.locked) return;
@@ -2339,7 +2401,7 @@ async function submitRanking(score, name) {
   return data;
 }
 
-function result() {
+function result(abandoned = false) {
   if (state.mode === 'DEBUG') {
     debugSettings('デバッグセッションを終了しました。');
     return;
@@ -2375,7 +2437,7 @@ function result() {
   // スタンダードモードの自己ベスト更新
   // ========================================
 
-  if (state.mode === 'STANDARD') {
+  if (state.mode === 'STANDARD' && !abandoned) {
 
     if (score > previousBest) {
       try {
@@ -2406,17 +2468,22 @@ function result() {
 
         <div class="result-simple-board">
 
-            ${challenge ? `
-                <div class="result-simple-label">CORRECT</div>
-                  <div class="result-simple-rank">
-                      ${state.correct}問
-                  </div>
-            ` : `
-                <div class="result-simple-label">RANK</div>
-                <div class="result-simple-rank">
-                    ${resultRank}
-                </div>
-            `}
+          ${abandoned ? `
+              <div class="result-simple-label">RESULT</div>
+              <div class="result-simple-rank">
+                  途中放棄
+              </div>
+          ` : challenge ? `
+              <div class="result-simple-label">CORRECT</div>
+              <div class="result-simple-rank">
+                  ${state.correct}問
+              </div>
+          ` : `
+              <div class="result-simple-label">RANK</div>
+              <div class="result-simple-rank">
+                  ${resultRank}
+              </div>
+          `}
 
             <div class="result-simple-label">SCORE</div>
             <div class="result-simple-score">
