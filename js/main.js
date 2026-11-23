@@ -255,7 +255,7 @@ function title(message = '') {
       </div>
       
       ${button('設定', 'settings', 'settings-button')}
-      
+
       <!-- 自己ベスト表示 -->
       <div class="title-best-score">
         <span class="title-best-label">スタンダードのベストスコア</span>

@@ -1895,7 +1895,7 @@ body {
     display: none;
     position: absolute;
     transform: translate(-50%, -50%);
-    font: 36px Arial, sans-serif;
+    font: 32px Arial, sans-serif;
     color: #111;
     text-shadow: 0 0 3px #fff;
     pointer-events: none;
@@ -5004,14 +5004,16 @@ body {
 
 /* ○：正解 */
 .image-touch-marker.image-touch-correct {
+    font-size: 20px;
     transform: translate(calc(-50% + 0px),
-            calc(-50% + -2px));
+            calc(-50% + 1px));
 }
 
 /* ×：不正解 */
 .image-touch-marker.image-touch-incorrect {
+    font-size: 20px;
     transform: translate(calc(-50% + 0px),
-            calc(-50% + 0px));
+            calc(-50% + 1px));
 }
 
 /* ========================================
