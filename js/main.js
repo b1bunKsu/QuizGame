@@ -255,6 +255,7 @@ function title(message = '') {
       </div>
       
       ${button('設定', 'settings', 'settings-button')}
+      ${button('設定', 'debug', 'debug-entry')}
 
       <!-- 自己ベスト表示 -->
       <div class="title-best-score">
@@ -709,17 +710,19 @@ async function loadAndStart(fromIntro = false) {
             ? 'MULTIPLE_CHOICE'
             : q.type;
 
-        const answers = type === 'MULTIPLE_CHOICE'
-          ? (
-            Array.isArray(q.answers)
-              ? q.answers
-              : Array.isArray(q.answer)
-                ? q.answer
-                : typeof q.answer === 'string'
-                  ? [q.answer]
-                  : []
-          )
-          : q.answers;
+        const answers =
+          type === 'MULTIPLE_CHOICE' ||
+            ['NUMBER', 'KANA', 'KATAKANA', 'EFFECT', 'POLYHEDRON'].includes(type)
+            ? (
+              Array.isArray(q.answers) && q.answers.length
+                ? q.answers
+                : Array.isArray(q.answer)
+                  ? q.answer
+                  : typeof q.answer === 'string'
+                    ? [q.answer]
+                    : []
+            )
+            : q.answers;
 
         return {
           ...q,
@@ -759,9 +762,10 @@ async function loadAndStart(fromIntro = false) {
 
         (
           ['NUMBER', 'KANA', 'KATAKANA'].includes(q.type) &&
-          (
-            typeof q.answer === 'string' ||
-            (Array.isArray(q.answers) && q.answers.length > 0)
+          Array.isArray(q.answers) &&
+          q.answers.length > 0 &&
+          q.answers.every(a =>
+            typeof a === 'string' && a.length > 0
           )
         )
       );
@@ -1939,22 +1943,13 @@ function answer(value) {
                   : q.type === 'POLYHEDRON'
                     ? String(value) === String(q.answer)
 
-                    : q.type === 'MULTIPLE_CHOICE'
-                      ? Array.isArray(value) &&
-                      value.length === state.activeAnswers.length &&
-                      value.every(v => state.activeAnswers.includes(v))
+                    : ['EFFECT', 'POLYHEDRON', 'NUMBER', 'KANA', 'KATAKANA'].includes(q.type)
+                      ? acceptedAnswers(q).includes(String(value))
 
-                      : ['NUMBER', 'KANA', 'KATAKANA'].includes(q.type)
-                        ? (
-                          Array.isArray(q.answers) && q.answers.length
-                            ? q.answers
-                            : [q.answer]
-                        ).map(String).includes(String(value))
+                      : q.type === 'CHARACTER_PANEL'
+                        ? String(value) === String(q.answer)
 
-                        : q.type === 'CHARACTER_PANEL'
-                          ? String(value) === String(q.answer)
-
-                          : value === q.choices[0]
+                        : value === q.choices[0]
   );
 
   finalizeNationalRate(q, correct, value === null);

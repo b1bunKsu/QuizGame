@@ -1,7 +1,12 @@
 function acceptedAnswers(q) {
-    return Array.isArray(q.answers) && q.answers.length
-        ? q.answers.map(String)
-        : [String(q.answer ?? '')];
+    const values =
+        Array.isArray(q.answers) && q.answers.length
+            ? q.answers
+            : Array.isArray(q.answer)
+                ? q.answer
+                : [q.answer ?? ''];
+
+    return values.map(String);
 }
 
 function visualInputType(answer) {
