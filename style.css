@@ -3807,7 +3807,7 @@ body {
     padding: 4px 8px;
     box-sizing: border-box;
     background: rgba(0, 0, 0, 0.30);
-    border: 2px solid #333333;
+    border: 2px solid black;
     border-radius: 0;
     color: white;
     font-size: 22px;
@@ -3824,7 +3824,7 @@ body {
 .quiz-shell .group-java-move {
     width: 35px;
     min-width: 35px;
-    height: 42px;
+    height: 46px;
     flex-shrink: 0;
     padding: 0;
     background: rgba(0, 0, 0, 0.30);
@@ -3896,7 +3896,7 @@ body {
     border: 2px solid black;
     border-radius: 0;
     color: white;
-    font-size: 16px;
+    font-size: 22px;
     font-weight: bold;
     text-shadow: 0 0 2px black;
     cursor: pointer;
@@ -3938,6 +3938,11 @@ body {
 
 .quiz-shell .group-java-choice-layer .group-java-move:disabled {
     cursor: default;
+}
+
+/* GROUPクイズ：解答後に表示全体を半透明にする */
+.quiz-shell.answer-disabled .group-java-display {
+    opacity: 0.5;
 }
 
 /* =========================================================
@@ -4764,6 +4769,11 @@ body {
     pointer-events: none;
 }
 
+/* 解答確定後は半透明 */
+.quiz-shell.answer-disabled .slot-reels {
+    opacity: 0.5;
+}
+
 
 /* ========================================
    一方通行クイズ：解答後の選択行を半透明にする
@@ -4922,6 +4932,27 @@ body {
 .quiz-shell.options-concealed #question-ui button.slot-arrow {
     color: white !important;
     -webkit-text-fill-color: white !important;
+}
+
+/* =========================================================
+   GROUP：出題アニメーション中の表示制御
+   ========================================================= */
+
+/* グループ名・選択肢の文字だけを隠す */
+.quiz-shell.options-concealed #question-ui .group-java-name,
+.quiz-shell.options-concealed #question-ui .group-java-choice-label {
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
+}
+
+/* 左右ボタンの矢印を表示する */
+.quiz-shell.options-concealed #question-ui button.group-java-move {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* 出題アニメーション中はマウスオーバー・クリックを無効化 */
