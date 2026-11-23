@@ -2922,16 +2922,10 @@ body {
     min-height: 50px;
     flex-shrink: 0;
     transform: translate(0px, 0px);
-}
-
-.quiz-shell .order-row {
     gap: 12px;
     min-height: 50px;
     flex-shrink: 0;
     transform: translate(0px, 0px);
-}
-
-.quiz-shell .order-row {
     gap: 12px;
     min-height: 50px;
     transform: translate(0px, 0px);
@@ -3987,6 +3981,10 @@ body {
 
 /* ヒント1～4の枠 */
 
+
+
+/* ヒント1も含めて通常表示 */
+
 .quiz-shell .rensou-java-placeholder {
     position: absolute;
     left: 50%;
@@ -4007,11 +4005,6 @@ body {
     text-shadow: 0 1 2px black;
     opacity: 1;
     transition: opacity 0.5s linear;
-}
-
-/* ヒント1も含めて通常表示 */
-
-.quiz-shell .rensou-java-placeholder {
     opacity: 1;
     transition: opacity 0.5s linear;
 }
@@ -4272,7 +4265,7 @@ body {
     box-sizing: border-box;
 
     /* 黄色の枠 */
-    border: 4px solid #000000;
+    border: 4px solid rgba(0, 0, 0, .80);
     border-radius: 3px;
 
     /* 文字を隠さない */
@@ -4281,6 +4274,69 @@ body {
     /* ボタン操作を妨げない */
     pointer-events: none;
 
+    z-index: 5;
+}
+
+/* ========================================
+   SLOT：解答枠の左右に三角形を表示
+   ======================================== */
+
+.slot-answer-frame::before,
+.slot-answer-frame::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 0;
+    height: 0;
+
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* 左側：▶ */
+.slot-answer-frame::before {
+    left: -22px;
+
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 14px solid white;
+}
+
+/* 右側：◀ */
+.slot-answer-frame::after {
+    right: -22px;
+
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 14px solid white;
+}
+
+/* ========================================
+   SLOT：リール上下の黒いグラデーション
+   ======================================== */
+
+.slot-window {
+    position: relative;
+    overflow: hidden;
+}
+
+/* 上下の暗いグラデーション */
+.slot-window::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+
+    background: linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.75) 0%,
+            rgba(0, 0, 0, 0.35) 22%,
+            rgba(0, 0, 0, 0) 42%,
+            rgba(0, 0, 0, 0) 58%,
+            rgba(0, 0, 0, 0.35) 78%,
+            rgba(0, 0, 0, 0.75) 100%);
+
+    pointer-events: none;
     z-index: 5;
 }
 
@@ -4850,24 +4906,42 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-/* 出題演出中は選択肢の内容だけ隠す。
-   キーボード・OKボタン・スロットのリールと上下ボタンは常時表示。 */
-.quiz-shell.options-concealed #question-ui *:not( :is(.slot-area, .slot-area *,
-        .typing-keys, .typing-keys *,
-        .fx-multi-ok, .rearrange-ok,
-        .fx-ox-button, .fx-ox-button *)) {
+/* ========================================
+   出題アニメーション中：文字を非表示
+   ======================================== */
+
+/* スロット上下ボタン以外の文字を非表示 */
+.quiz-shell.options-concealed #question-ui button:not(.slot-arrow),
+.quiz-shell.options-concealed #question-ui button:not(.slot-arrow) * {
     color: transparent !important;
     -webkit-text-fill-color: transparent !important;
-    text-shadow: none !important;
+    text-shadow: none;
 }
 
-.quiz-shell.options-concealed #question-ui :is(.typing-keys button, .fx-multi-ok, .rearrange-ok,
-    .fx-ox-button, .fx-ox-button *) {
-    -webkit-text-fill-color: currentColor !important;
+/* スロット上下ボタンの▲▼は白文字で表示 */
+.quiz-shell.options-concealed #question-ui button.slot-arrow {
+    color: white !important;
+    -webkit-text-fill-color: white !important;
 }
 
-.quiz-shell.options-concealed #question-ui :is(img, canvas, svg):not(.slot-area *, .fx-ox-button *) {
-    visibility: hidden !important;
+/* 出題アニメーション中はマウスオーバー・クリックを無効化 */
+
+
+/* ========================================
+   出題アニメーション中
+   ======================================== */
+
+/* ボタンの文字を非表示 */
+.quiz-shell.options-concealed #question-ui button,
+.quiz-shell.options-concealed #question-ui button * {
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* マウスオーバー・クリックを無効化 */
+.quiz-shell.options-concealed #question-ui {
+    pointer-events: none !important;
+    pointer-events: none !important;
 }
 
 /* 100問チャレンジ：ハートだけの文字サイズ */

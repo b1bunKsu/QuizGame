@@ -75,8 +75,8 @@ function setupPolyhedron(answer, host) {
     [0, 2, 5],
     [1, 2, 4],
     [1, 4, 3],
-    [1, 3, 5],
-    [1, 5, 2]
+    [1, 5, 2],
+    [1, 3, 5]
   ];
 
   // ========================================
@@ -116,6 +116,20 @@ function setupPolyhedron(answer, host) {
   const ROTATION_X = 2;
   const ROTATION_Y = 6;
   const ROTATION_Z = 1;
+
+  // ========================================
+  // 登場アニメーション設定
+  // ========================================
+
+  // 登場時間：0.65秒
+  const ENTRANCE_DURATION = 500;
+
+  // 登場開始時の拡大率：400%
+  const ENTRANCE_START_SCALE = 4;
+
+  // 拡大の中心座標
+  const CENTER_X = 300;
+  const CENTER_Y = 103;
 
   const start = performance.now();
   let frame = 0;
@@ -177,6 +191,8 @@ function setupPolyhedron(answer, host) {
       ];
     };
 
+    // 回転のみ適用
+    // 登場時の拡大率は頂点座標に適用しない
     const pts = vertices.map(transform);
 
     // ========================================
@@ -184,11 +200,49 @@ function setupPolyhedron(answer, host) {
     // ========================================
 
     const project = ([x, y, z]) => [
-      300 + x * 72,
-      103 + y * 72
+      CENTER_X + x * 72,
+      CENTER_Y + y * 72
     ];
 
-    ctx.clearRect(0, 0, 600, 205);
+    // ========================================
+    // 登場アニメーション
+    // ========================================
+
+    const entranceElapsed = Math.min(
+      Math.max(now - start, 0),
+      ENTRANCE_DURATION
+    );
+
+    const t = entranceElapsed / ENTRANCE_DURATION;
+
+    // イージングなし・線形補間
+    const scale =
+      ENTRANCE_START_SCALE
+      + (1 - ENTRANCE_START_SCALE) * t;
+
+    // ========================================
+    // Canvas描画開始
+    // ========================================
+
+    // 前フレームを消去
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    ctx.save();
+
+    // ========================================
+    // キューブ全体を拡大
+    // ========================================
+
+    // 中心位置を基準に拡大する
+    // 面・文字・輪郭線すべてに適用
+    ctx.translate(CENTER_X, CENTER_Y);
+    ctx.scale(scale, scale);
+    ctx.translate(-CENTER_X, -CENTER_Y);
 
     // ========================================
     // 面の奥行き順
@@ -271,12 +325,18 @@ function setupPolyhedron(answer, host) {
           return v.map(x => x / m);
         };
 
+        // ========================================
         // 面内の横方向
+        // ========================================
+
         const u = normalize(
           sub(p3[1], p3[0])
         );
 
+        // ========================================
         // 面内の縦方向
+        // ========================================
+
         const toward = sub(
           p3[isTriangle ? 2 : 3],
           p3[0]
@@ -310,8 +370,6 @@ function setupPolyhedron(answer, host) {
         const vx = projectedV[0] - c2[0];
         const vy = projectedV[1] - c2[1];
 
-        // 文字サイズ
-
         // ========================================
         // Safari対応：通常サイズで文字を描画
         // ========================================
@@ -339,7 +397,7 @@ function setupPolyhedron(answer, host) {
           c2[1]
         );
 
-        ctx.fillStyle = '#151d34';
+        ctx.fillStyle = '#191970';
 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -357,6 +415,13 @@ function setupPolyhedron(answer, host) {
 
       }
     }
+
+    // ========================================
+    // Canvas描画終了
+    // ========================================
+
+    // 全体拡大の変換を解除
+    ctx.restore();
 
     // 次のフレーム
     frame = requestAnimationFrame(draw);

@@ -241,6 +241,7 @@ function title(message = '') {
       </div>
 
       ${button('設定', 'settings', 'settings-button')}
+      ${button('debug', 'debug', 'debug-entry')}
 
       ${message ? `<div id="message">${esc(message)}</div>` : ''}
     </div>
