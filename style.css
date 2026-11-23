@@ -9,8 +9,11 @@
    ============================================================ */
 
 @font-face {
-    font-family: NotoJP;
-    src: url("./assets/NotoSansJP-Bold.ttf");
+    font-family: "NotoJP";
+    src: url("./assets/NotoSansJP-Bold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
 }
 
 * {
@@ -30,8 +33,7 @@ button,
 input,
 select,
 textarea {
-    font-family: "Noto Sans JP", sans-serif;
-    font-weight: 700;
+    font-family: "NotoJP", sans-serif;
 }
 
 html,
