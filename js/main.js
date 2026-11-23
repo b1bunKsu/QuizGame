@@ -1391,6 +1391,9 @@ const NATIONAL_RATE_API = 'https://b1bunksu-quizgame.netlify.app/.netlify/functi
 let nationalRateRequestSequence = 0;
 let nationalRateSnapshot = null;
 
+const NATIONAL_RANKING_API =
+  'https://b1bunksu-quizgame.netlify.app/.netlify/functions/ranking';
+
 function nationalRateKey(q) {
   const type = String(q?.type ?? '');
   const id = String(q?.id ?? '');
@@ -2237,10 +2240,6 @@ function rankDisplayName(score) {
 // 100問チャレンジ達成演出
 // ============================================================
 
-// ============================================================
-// 100問チャレンジ達成演出
-// ============================================================
-
 function showHundredClear() {
 
   SoundManager.playSe("applause");
@@ -2299,6 +2298,53 @@ function showHundredClear() {
 
 }
 
+// ========================================
+// プレイヤーIDの取得・生成
+// ========================================
+
+function getPlayerId() {
+  const key = 'quizgame_web_player_id';
+
+  let id = localStorage.getItem(key);
+
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+
+  return id;
+}
+
+// ========================================
+// 全国ランキングへのスコア送信
+// ========================================
+
+async function submitRanking(score, name) {
+  const response = await fetch(NATIONAL_RANKING_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      playerId: getPlayerId(),
+      name,
+      score
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`ランキング登録失敗: HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.success) {
+    throw new Error('ランキング登録に失敗しました');
+  }
+
+  return data;
+}
+
 function result() {
   if (state.mode === 'DEBUG') {
     debugSettings('デバッグセッションを終了しました。');
@@ -2312,13 +2358,14 @@ function result() {
   const score = state.score;
 
   // ランク判定
-  const resultRank = score < 500 ? 'D'
-    : score < 1000 ? 'C'
-      : score < 1500 ? 'B'
-        : score < 2000 ? 'A'
-          : score < 3000 ? 'S'
-            : score < 4000 ? 'SS'
-              : 'SSS';
+  const resultRank =
+    score < 1000 ? 'D'
+      : score < 2000 ? 'C'
+        : score < 2500 ? 'B'
+          : score < 3000 ? 'A'
+            : score < 3500 ? 'S'
+              : score < 4000 ? 'SS'
+                : 'SSS';
 
   // 自己ベストの取得
   const key = 'quizgame_web_best_STANDARD';
@@ -2330,13 +2377,30 @@ function result() {
     console.warn(e);
   }
 
-  // スタンダードモードのみ自己ベストを更新
-  if (!challenge && !highSpeed && score > previousBest) {
-    try {
-      localStorage.setItem(key, String(score));
-    } catch (e) {
-      console.warn(e);
+  // ========================================
+  // スタンダードモードの自己ベスト更新
+  // ========================================
+
+  if (state.mode === 'STANDARD') {
+
+    if (score > previousBest) {
+      try {
+        localStorage.setItem(key, String(score));
+      } catch (e) {
+        console.warn(e);
+      }
     }
+
+    // 全国ランキングへ送信
+    // 自己ベスト以外でも送信可能。
+    // サーバー側で最高記録のみ保存する。
+    submitRanking(score, state.name)
+      .then(data => {
+        console.log('全国ランキング登録結果:', data);
+      })
+      .catch(error => {
+        console.warn('全国ランキング登録失敗:', error);
+      });
   }
 
   // リザルト画面

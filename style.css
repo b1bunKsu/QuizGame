@@ -17,6 +17,23 @@
     box-sizing: border-box;
 }
 
+/* ========================================
+   全画面・全出題形式のフォント統一
+   ======================================== */
+
+html,
+body,
+#stage,
+#app,
+#app *,
+button,
+input,
+select,
+textarea {
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 700;
+}
+
 html,
 body {
     margin: 0;
