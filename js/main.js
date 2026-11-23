@@ -223,8 +223,8 @@ function title(message = '') {
 
   app.innerHTML = `
     <div class="center title-screen screen-enter">
-      <div class="title">QUIZ GAME</div>
-      <div class="subtitle">Let's Start!</div>
+      <div class="title">ノンジャンル検定</div>
+      <div class="subtitle">ジャンルを問わずいろいろな問題が出題されるクイズゲームです</div>
 
       <input
         id="name"
