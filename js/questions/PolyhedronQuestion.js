@@ -121,8 +121,8 @@ function setupPolyhedron(answer, host) {
   // 登場アニメーション設定
   // ========================================
 
-  // 登場時間：0.65秒
-  const ENTRANCE_DURATION = 500;
+  // 登場時間：0.5秒
+  const ENTRANCE_DURATION = 400;
 
   // 登場開始時の拡大率：400%
   const ENTRANCE_START_SCALE = 4;
