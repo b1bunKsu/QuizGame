@@ -402,7 +402,7 @@ function setupPolyhedron(answer, host) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        ctx.font = `bold ${FONT_SIZE}px NotoJP, sans-serif`;
+        ctx.font = `${FONT_SIZE}px NotoJP, sans-serif`;
 
         ctx.fillText(
           glyph,

@@ -36,7 +36,7 @@ function setupEffect(hint, host) {
 
     function drawText(context, size, color = '#fff', outline = true) {
         context.save();
-        context.font = `bold ${size}px NotoJP, sans-serif`;
+        context.font = `${size}px NotoJP, sans-serif`;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillStyle = color;
@@ -124,7 +124,7 @@ function setupEffect(hint, host) {
     puzzleSource.height = puzzleH;
     const ps = puzzleSource.getContext('2d');
 
-    ps.font = `bold ${Math.min(100, Math.floor(520 / Math.max(1, letters.length)))}px NotoJP, sans-serif`;
+    ps.font = `${Math.min(100, Math.floor(520 / Math.max(1, letters.length)))}px NotoJP, sans-serif`;
     ps.textAlign = 'center';
     ps.textBaseline = 'middle';
     ps.fillStyle = '#fff';
@@ -276,7 +276,7 @@ function setupEffect(hint, host) {
 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = `bold ${Math.min(92, cell)}px NotoJP, sans-serif`;
+            ctx.font = `${Math.min(92, cell)}px NotoJP, sans-serif`;
 
             letters.forEach((ch, i) => {
                 const angle = angles[i] +
