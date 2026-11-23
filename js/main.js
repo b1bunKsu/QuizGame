@@ -974,7 +974,7 @@ function progressMarkup() {
 
 const QUESTION_WIPE = {
   maxWidth: 640,
-  font: 'bold 25px "Noto Sans JP", sans-serif',
+  font: 'bold 25px "Noto JP", sans-serif',
   msPerPixel: 2,
   waitMs: 1000,
   pageWaitMs: 1000,
