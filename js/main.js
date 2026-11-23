@@ -1927,12 +1927,16 @@ function disableQuestionButtons() {
 
   if (!quiz) return;
 
-  // 解答後の見た目を、番号キーなどbutton以外にも適用する
+  // 解答後の見た目を適用
   quiz.classList.add('answer-disabled');
 
-  // 実際のボタン操作はすべて無効化
+  // 中断ボタン以外を無効化
   quiz.querySelectorAll('button').forEach(button => {
+
+    if (button.id === 'quit-button') return;
+
     button.disabled = true;
+
   });
 
 }
@@ -2253,7 +2257,7 @@ function animateScore(el, from, to) {
   }
 
   const start = performance.now();
-  const duration = 600;
+  const duration = 1000;
 
   function frame(now) {
     const t = Math.min(1, (now - start) / duration);

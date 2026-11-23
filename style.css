@@ -4755,7 +4755,8 @@ body {
    解答確定後：全問題形式の操作ボタン・番号キーを半透明に
    button以外のspan/divキーにも適用する
    ========================================================= */
-.quiz-shell.answer-disabled button,
+/* 解答確定後：中断ボタン以外を無効化 */
+.quiz-shell.answer-disabled button:not(.quit-button),
 .quiz-shell.answer-disabled .line-key,
 .quiz-shell.answer-disabled .order-number,
 .quiz-shell.answer-disabled .rensou-java-number,
