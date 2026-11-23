@@ -211,6 +211,20 @@ function title(message = '') {
   SoundManager.playBgm('TITLE');
   clearTimer();
 
+  // ========================================
+  // スタンダードモードの自己ベスト取得
+  // ========================================
+
+  let bestScore = 0;
+
+  try {
+    bestScore = Number(
+      localStorage.getItem('quizgame_web_best_STANDARD')
+    ) || 0;
+  } catch (e) {
+    console.warn(e);
+  }
+
   if (state.activeQuestion) {
     state.activeQuestion.dispose();
     state.activeQuestion = null;
@@ -239,8 +253,16 @@ function title(message = '') {
         ${button('ハイスピード', 'highspeed')}
         ${button('100問チャレンジ', 'hundred')}
       </div>
-
+      
       ${button('設定', 'settings', 'settings-button')}
+
+      <!-- 自己ベスト表示 -->
+      <div class="title-best-score">
+        <span class="title-best-label">スタンダードのベストスコア</span>
+      </div>
+      <div class="title-best-score">
+        <span class="title-best-value">${bestScore}</span>
+      </div>
 
       ${message ? `<div id="message">${esc(message)}</div>` : ''}
     </div>
@@ -905,13 +927,26 @@ function clearTimer() {
 }
 
 function nextRankTarget(score) {
-  return score < 500 ? 500
-    : score < 1000 ? 1000
-      : score < 1500 ? 1500
-        : score < 2000 ? 2000
-          : score < 3000 ? 3000
-            : score < 4000 ? 4000
-              : 'BEST';
+
+  if (score < 500) return 500;
+  if (score < 1000) return 1000;
+  if (score < 1500) return 1500;
+  if (score < 2000) return 2000;
+  if (score < 3000) return 3000;
+  if (score < 4000) return 4000;
+
+  // 4000点以上では保存済みの自己ベストを表示
+  let bestScore = 0;
+
+  try {
+    bestScore = Number(
+      localStorage.getItem('quizgame_web_best_STANDARD')
+    ) || 0;
+  } catch (e) {
+    console.warn(e);
+  }
+
+  return bestScore > 0 ? bestScore : 'BEST';
 }
 
 function progressMarkup() {

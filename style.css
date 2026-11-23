@@ -5220,3 +5220,52 @@ body {
 .quiz-shell .rensou-java-number {
     text-shadow: 0 1px 3px #000;
 }
+
+/* ========================================
+   タイトル画面：自己ベスト表示
+   ======================================== */
+
+.title-best-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.title-best-label {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 2px 4px #000000;
+}
+
+.title-best-value {
+    font-size: 44px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 2px 4px #000000;
+    transform: translate(0, -30px);
+}
+
+/* ========================================
+   設定画面
+   ======================================== */
+.settings-title {
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 2px 4px #000000;
+}
+
+.settings-label {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 2px 4px #000000;
+}
+
+.settings-check {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 2px 4px #000000;
+}
