@@ -105,12 +105,12 @@ function resize() {
   stage.style.top = `${offsetTop + (height - GAME_HEIGHT * scale) / 2}px`;
 
   // タッチ主体の小型端末だけ縦向き案内を表示。PCの縦長ウィンドウは対象外。
-  const mobile = window.matchMedia('(pointer: coarse)').matches
-    && Math.min(window.screen.width, window.screen.height) <= 600;
-  const portrait = (viewport ? viewport.height : window.innerHeight) > (viewport ? viewport.width : window.innerWidth);
-  const showNotice = mobile && portrait;
-  rotateNotice.hidden = !showNotice;
-  stage.style.visibility = showNotice ? 'hidden' : 'visible';
+  // 縦画面でもゲームを表示する
+  if (rotateNotice) {
+    rotateNotice.hidden = true;
+  }
+
+  stage.style.visibility = 'visible';
 }
 
 addEventListener('resize', resize);
@@ -1325,18 +1325,18 @@ function showQuestion() {
 
         <div class="hud-panel rank-panel-web">
           <div class="hud-caption" id="rank-name">
-            ${gameExtension.rankCaption?.() ?? ( state.mode === 'HUNDRED_CHALLENGE'
-        ? 'ライフ'
-        :
-        rankDisplayName(state.score))
+            ${gameExtension.rankCaption?.() ?? (state.mode === 'HUNDRED_CHALLENGE'
+      ? 'ライフ'
+      :
+      rankDisplayName(state.score))
 
     }
           </div>
 
           <div class="hud-number ${state.mode === 'HUNDRED_CHALLENGE' ? 'life-hearts' : ''}" id="rank-target">
-            ${gameExtension.rankTarget?.(q, true) ?? ( state.mode === 'HUNDRED_CHALLENGE'
-        ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-        : nextRankTarget(state.score))
+            ${gameExtension.rankTarget?.(q, true) ?? (state.mode === 'HUNDRED_CHALLENGE'
+      ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
+      : nextRankTarget(state.score))
     }
           </div>
         </div>
@@ -1359,9 +1359,9 @@ function showQuestion() {
 
         <div class="hud-panel player-panel-web">
           <div class="hud-caption">
-            ${gameExtension.playerCaption?.() ?? ( state.mode === 'HUNDRED_CHALLENGE'
-        ? '正解数'
-        : esc(state.name))
+            ${gameExtension.playerCaption?.() ?? (state.mode === 'HUNDRED_CHALLENGE'
+      ? '正解数'
+      : esc(state.name))
     }
           </div>
 
@@ -1844,18 +1844,18 @@ function answer(value) {
     const rankEl = document.querySelector('#rank-name');
 
     if (rankEl) {
-      rankEl.textContent = gameExtension.rankCaption?.() ?? ( state.mode === 'HUNDRED_CHALLENGE'
-          ? 'ライフ'
-          :
-          rankDisplayName(state.score));
+      rankEl.textContent = gameExtension.rankCaption?.() ?? (state.mode === 'HUNDRED_CHALLENGE'
+        ? 'ライフ'
+        :
+        rankDisplayName(state.score));
     }
 
     const targetEl = document.querySelector('#rank-target');
 
     if (targetEl) {
-      targetEl.textContent = gameExtension.rankTarget?.(q, false) ?? ( state.mode === 'HUNDRED_CHALLENGE'
-          ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-          : nextRankTarget(state.score));
+      targetEl.textContent = gameExtension.rankTarget?.(q, false) ?? (state.mode === 'HUNDRED_CHALLENGE'
+        ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
+        : nextRankTarget(state.score));
     }
 
     state.history.push({
