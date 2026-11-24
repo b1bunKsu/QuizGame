@@ -10,9 +10,7 @@ function validEffect(q) {
 
 function setupEffect(hint, host) {
     const effects = ['ROTATING', 'MOSAIC', 'ZOOM_OUT', 'SLIDING_PUZZLE'];
-    const forced = state.mode === 'DEBUG' && state.debug.type === 'EFFECT'
-        ? state.debug.effect
-        : 'RANDOM';
+    const forced = gameExtension.effectChoice?.() ?? 'RANDOM';
     const selected = effects.includes(forced)
         ? forced
         : effects[Math.floor(Math.random() * effects.length)];

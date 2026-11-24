@@ -3,6 +3,8 @@
 
 const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/main/questions/';
 
+const gameExtension = globalThis.QuizGameExtension ?? {};
+
 const app = document.querySelector('#app');
 const stage = document.querySelector('#stage');
 
@@ -24,13 +26,6 @@ const state = {
   lives: 5,
   streak: 0,
   questionPool: [],
-  debug: {
-    type: 'EFFECT',
-    id: '',
-    effect: 'RANDOM',
-    disableTimer: false,
-    showAnswer: false
-  },
   qwerty: false,
   bgmVolume: 0.5,
   seVolume: 0.5,
@@ -268,6 +263,8 @@ function title(message = '') {
     </div>
   `;
 
+  gameExtension.onTitle?.();
+
   bind({
     standard: () => startFromTitle('STANDARD'),
     highspeed: () => startFromTitle('HIGH_SPEED'),
@@ -276,11 +273,6 @@ function title(message = '') {
     settings: () => {
       state.name = document.querySelector('#name').value.trim() || 'PLAYER';
       settings();
-    },
-
-    debug: () => {
-      state.name = document.querySelector('#name').value.trim() || 'PLAYER';
-      debugSettings();
     }
   });
 }
@@ -454,317 +446,6 @@ function settings() {
   });
 }
 
-async function updateDebugQuestionCounts() {
-
-  const panel = app.querySelector('#debug-question-counts');
-
-  if (!panel) return;
-
-  panel.innerHTML = `
-    <div class="debug-count-title">問題数一覧</div>
-    <div class="debug-count-message">
-      問題数を取得中…
-    </div>
-  `;
-
-  try {
-
-    const questions = await loadSupportedQuestions();
-
-    // 画面遷移済みなら処理を終了
-    if (!panel.isConnected) return;
-
-    // ORDER-AをORDERに統合
-    const normalizeType = type =>
-      type === 'ORDER-A' ? 'ORDER' : type;
-
-    // 登録されている問題形式を取得
-    const types = [...new Set(
-      [...QuestionManager.types.keys()]
-        .map(normalizeType)
-    )];
-
-    // 各問題形式を0問で初期化
-    const counts = new Map(
-      types.map(type => [type, 0])
-    );
-
-    // 問題数を集計
-    for (const q of questions) {
-
-      const type = normalizeType(q.type);
-
-      counts.set(
-        type,
-        (counts.get(type) ?? 0) + 1
-      );
-
-    }
-
-    // 一覧を表示
-    panel.innerHTML = `
-      <div class="debug-count-title">
-        問題数一覧
-      </div>
-
-      <div class="debug-count-total">
-        総問題数
-        <span>
-          ${questions.length.toLocaleString('ja-JP')} 問
-        </span>
-      </div>
-
-      <div class="debug-count-list">
-
-        ${[...counts.entries()].map(([type, count]) => `
-          <div class="debug-count-row">
-
-            <span class="debug-count-type">
-              ${esc(type)}
-            </span>
-
-            <span class="debug-count-value">
-              ${count.toLocaleString('ja-JP')} 問
-            </span>
-
-          </div>
-        `).join('')}
-
-      </div>
-    `;
-
-  } catch (e) {
-
-    console.error(e);
-
-    if (!panel.isConnected) return;
-
-    panel.innerHTML = `
-      <div class="debug-count-title">
-        問題数一覧
-      </div>
-
-      <div class="debug-count-message">
-        問題数の取得に失敗しました
-      </div>
-    `;
-
-  }
-
-}
-
-function debugSettings(message = '') {
-  clearTimer();
-
-  const opts = ['ALL', ...QuestionManager.types.keys()];
-  const d = state.debug;
-
-  app.innerHTML = `
-    <div class="center debug-screen screen-enter">
-
-      <div id="debug-question-counts"
-          class="debug-question-counts">
-      </div>
-
-      <div class="settings-title">デバッグモード</div>
-
-      <label for="debug-type">問題形式</label>
-
-      <select id="debug-type">
-        ${opts.map(t => `
-          <option
-            value="${esc(t)}"
-            ${d.type === t ? 'selected' : ''}
-          >
-            ${t === 'ALL' ? 'すべて' : esc(t)}
-          </option>
-        `).join('')}
-      </select>
-
-      <label for="debug-effect">
-        EFFECTの演出（EFFECT選択時のみ）
-      </label>
-
-      <select id="debug-effect">
-        ${[
-      'RANDOM',
-      'ROTATING',
-      'MOSAIC',
-      'ZOOM_OUT',
-      'SLIDING_PUZZLE'
-    ].map(t => `
-          <option
-            value="${t}"
-            ${d.effect === t ? 'selected' : ''}
-          >
-            ${t === 'RANDOM' ? 'ランダム' : t}
-          </option>
-        `).join('')}
-      </select>
-
-      <label for="debug-id">
-        問題ID（空欄ならID順に1から出題）
-      </label>
-
-      <input
-        id="debug-id"
-        type="number"
-        min="1"
-        step="1"
-        placeholder="1"
-        value="${esc(d.id)}"
-      >
-
-      <label class="settings-check">
-        <input
-          id="debug-no-timer"
-          type="checkbox"
-          ${d.disableTimer ? 'checked' : ''}
-        >
-        制限時間を無効化
-      </label>
-
-      <label class="settings-check">
-        <input
-          id="debug-show-answer"
-          type="checkbox"
-          ${d.showAnswer ? 'checked' : ''}
-        >
-        正解を表示
-      </label>
-
-      <div class="debug-buttons">
-        ${button('デバッグ開始', 'debug-start')}
-        ${button('タイトルへ戻る', 'debug-back')}
-      </div>
-
-      ${message ? `
-        <div class="debug-error" role="alert">${esc(message)}</div>
-      ` : ''}
-    </div>
-  `;
-
-  const typeInput = app.querySelector('#debug-type');
-  const effectInput = app.querySelector('#debug-effect');
-
-  const syncEffect = () => {
-    effectInput.disabled = typeInput.value !== 'EFFECT';
-    effectInput.title = effectInput.disabled
-      ? 'EFFECTを選択すると指定できます'
-      : '';
-  };
-
-  typeInput.addEventListener('change', syncEffect);
-  syncEffect();
-
-  // 問題数一覧を更新
-  updateDebugQuestionCounts();
-
-  bind({
-    'debug-start': () => {
-      const type = app.querySelector('#debug-type').value;
-      const id = app.querySelector('#debug-id').value.trim();
-      const effect = app.querySelector('#debug-effect').value;
-
-      if (
-        id &&
-        (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)))
-      ) {
-        debugSettings('問題IDには1以上の整数を指定してください。');
-        return;
-      }
-
-      state.debug = {
-        type,
-        id,
-        effect,
-        disableTimer: app.querySelector('#debug-no-timer').checked,
-        showAnswer: app.querySelector('#debug-show-answer').checked
-      };
-
-      state.mode = 'DEBUG';
-      loadAndStart();
-    },
-
-    'debug-back': () => title()
-  });
-}
-
-function debugAnswerText(q) {
-  if (q.type === 'OX') return q.answer;
-
-  if (q.type === 'MULTIPLE_CHOICE') {
-    return Array.isArray(state.activeAnswers)
-      ? state.activeAnswers.join(' / ')
-      : JSON.stringify(q.answers ?? q.choices?.[0] ?? '');
-  }
-
-  if (q.type === 'LINE_MATCHING') {
-    return 'JSONの対応順: ' +
-      (q.left?.map((v, i) => `${i + 1} → ${i + 1}`).join('、')
-        || '元データ参照');
-  }
-
-  if (
-    q.type === 'RENSOU' ||
-    q.type === 'CHOICE' ||
-    q.type === 'ONE_WAY' ||
-    q.type === 'SLOT'
-  ) {
-    return q.choices?.[0] ?? q.answer ?? '';
-  }
-
-  if (q.type === 'GROUP') {
-    return '元データのグループ分類を参照';
-  }
-
-  return (
-    Array.isArray(q.answers)
-      ? q.answers.join(' / ')
-      : q.answer
-  ) ?? q.choices?.[0] ?? '元データ参照';
-}
-
-
-function debugMove(direction) {
-
-  if (state.mode !== 'DEBUG') return;
-  if (!state.questions.length) return;
-
-  clearTimer();
-
-  if (state.activeQuestion) {
-    state.activeQuestion.dispose();
-    state.activeQuestion = null;
-  }
-
-  if (state.typingKeyHandler) {
-    document.removeEventListener(
-      'keydown',
-      state.typingKeyHandler
-    );
-    state.typingKeyHandler = null;
-  }
-
-  state.locked = false;
-
-  // 前後に移動（端では反対側へループ）
-  state.index = (
-    state.index + direction + state.questions.length
-  ) % state.questions.length;
-
-  showQuestion();
-}
-
-function debugNext() {
-  debugMove(1);
-}
-
-function debugPrevious() {
-  debugMove(-1);
-}
-
-
 function loading() {
   app.innerHTML = `
     <div class="center">
@@ -918,93 +599,21 @@ async function loadAndStart(fromIntro = false) {
     // ゲームモードごとの問題抽出
     // ========================================
 
-    const filtered = state.mode === 'DEBUG'
-      ? supported.filter(q =>
-        state.debug.type === 'ALL' ||
-        q.type === state.debug.type
-      )
-      : state.mode === 'HIGH_SPEED'
-        ? supported.filter(q =>
-          HIGHSPEED_TYPES.has(q.type)
-        )
-        : supported;
-
-    if (!filtered.length) {
-      throw Error(
-        state.mode === 'DEBUG'
-          ? '指定した形式の問題が見つかりません'
-          : '対応形式の問題がありません'
-      );
-    }
-
-    // ========================================
-    // デバッグはID順、通常プレイはランダム
-    // ========================================
-
-    if (state.mode === 'DEBUG') {
-
-      filtered.sort((a, b) => {
-
-        const aId = Number(a.id);
-        const bId = Number(b.id);
-
-        if (
-          Number.isFinite(aId) &&
-          Number.isFinite(bId)
-        ) {
-          return aId - bId;
-        }
-
-        return String(a.id).localeCompare(
-          String(b.id),
-          'ja',
-          { numeric: true }
-        );
-
-      });
-
+    const custom = gameExtension.prepareQuestions?.(supported);
+    if (custom) {
+      state.questionPool = custom.questions;
+      state.questions = custom.questions;
+      state.index = custom.index;
     } else {
-
+      const filtered = state.mode === 'HIGH_SPEED'
+        ? supported.filter(q => HIGHSPEED_TYPES.has(q.type)) : supported;
+      if (!filtered.length) throw Error('対応形式の問題がありません');
       shuffle(filtered);
-
-    }
-
-    // ========================================
-    // 出題数の設定
-    // ========================================
-
-    const count = state.mode === 'DEBUG'
-      ? filtered.length
-      : state.mode === 'HIGH_SPEED'
-        ? 15
-        : state.mode === 'HUNDRED_CHALLENGE'
-          ? filtered.length
-          : 25;
-
-    state.questionPool = filtered;
-    state.questions = filtered.slice(0, count);
-    state.index = 0;
-
-    // ========================================
-    // デバッグでIDが指定されている場合
-    // ========================================
-
-    if (state.mode === 'DEBUG' && state.debug.id) {
-
-      const targetIndex = state.questions.findIndex(
-        q => String(q.id) === state.debug.id
-      );
-
-      if (targetIndex === -1) {
-
-        throw Error(
-          `指定した問題ID ${state.debug.id} が見つかりません`
-        );
-
-      }
-
-      state.index = targetIndex;
-
+      const count = state.mode === 'HIGH_SPEED' ? 15
+        : state.mode === 'HUNDRED_CHALLENGE' ? filtered.length : 25;
+      state.questionPool = filtered;
+      state.questions = filtered.slice(0, count);
+      state.index = 0;
     }
 
     // ========================================
@@ -1055,19 +664,8 @@ async function loadAndStart(fromIntro = false) {
 
     console.error(e);
 
-    if (state.mode === 'DEBUG') {
-
-      debugSettings(
-        '問題の読み込みに失敗しました: ' + e.message
-      );
-
-    } else {
-
-      title(
-        '問題の読み込みに失敗しました。ネット接続とGitHubのJSON公開状態を確認してください。詳細: ' +
-        e.message
-      );
-
+    if (!gameExtension.onLoadError?.(e)) {
+      title('問題の読み込みに失敗しました。ネット接続とGitHubのJSON公開状態を確認してください。詳細: ' + e.message);
     }
 
   }
@@ -1626,7 +1224,7 @@ function finalizeNationalRate(q, correct, timeout) {
     const rateValue = label.querySelector('.national-rate-value');
     if (rateValue) rateValue.textContent = frozenRate === null ? '-' : String(frozenRate);
   }
-  if (state.mode === 'DEBUG') return;
+  if (gameExtension.isPractice?.()) return;
   const key = nationalRateKey(q);
   if (!key) return;
   const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -1649,7 +1247,7 @@ function showQuestion() {
   // ========================================
 
   if (
-    state.mode !== 'DEBUG' &&
+    !gameExtension.isPractice?.() &&
     state.mode !== 'HUNDRED_CHALLENGE' &&
     state.index === state.questions.length - 1
   ) {
@@ -1722,22 +1320,18 @@ function showQuestion() {
 
         <div class="hud-panel rank-panel-web">
           <div class="hud-caption" id="rank-name">
-            ${state.mode === 'DEBUG'
-      ? 'デバッグ'
-      : state.mode === 'HUNDRED_CHALLENGE'
+            ${gameExtension.rankCaption?.() ?? ( state.mode === 'HUNDRED_CHALLENGE'
         ? 'ライフ'
         :
-        rankDisplayName(state.score)
+        rankDisplayName(state.score))
 
     }
           </div>
 
           <div class="hud-number ${state.mode === 'HUNDRED_CHALLENGE' ? 'life-hearts' : ''}" id="rank-target">
-            ${state.mode === 'DEBUG'
-      ? 'ID: ' + esc(q.id)
-      : state.mode === 'HUNDRED_CHALLENGE'
+            ${gameExtension.rankTarget?.(q, true) ?? ( state.mode === 'HUNDRED_CHALLENGE'
         ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-        : nextRankTarget(state.score)
+        : nextRankTarget(state.score))
     }
           </div>
         </div>
@@ -1760,11 +1354,9 @@ function showQuestion() {
 
         <div class="hud-panel player-panel-web">
           <div class="hud-caption">
-            ${state.mode === 'DEBUG'
-      ? 'DEBUG'
-      : state.mode === 'HUNDRED_CHALLENGE'
+            ${gameExtension.playerCaption?.() ?? ( state.mode === 'HUNDRED_CHALLENGE'
         ? '正解数'
-        : esc(state.name)
+        : esc(state.name))
     }
           </div>
 
@@ -1793,7 +1385,7 @@ function showQuestion() {
 
       <section class="answer-bottom">
 
-        ${state.mode !== 'DEBUG' &&
+        ${!gameExtension.isPractice?.() &&
       state.mode !== 'HUNDRED_CHALLENGE'
       ? `
               <div class="progress-web" id="progress-web">
@@ -1806,36 +1398,6 @@ function showQuestion() {
         <div id="question-ui"></div>
 
       </section>
-
-      ${state.mode === 'DEBUG'
-      ? `
-            <div class="debug-toolbar">
-              <span>
-                DEBUG / ${esc(q.type)} / ID ${esc(q.id)}
-              </span>
-                <button id="debug-prev" type="button">
-                  ◀ 前へ
-                </button>
-
-                <button id="debug-skip" type="button">
-                  次へ ▶
-                </button>
-              <button id="debug-exit" type="button">
-                終了
-              </button>
-            </div>
-
-            ${state.debug.showAnswer
-        ? `
-                  <div class="debug-answer">
-                    正解: ${esc(debugAnswerText(q))}
-                  </div>
-                `
-        : ''
-      }
-          `
-      : ''
-    }
 
       <div class="feedback" id="feedback" role="status"></div>
 
@@ -1863,18 +1425,7 @@ function showQuestion() {
   }
 
 
-  if (state.mode === 'DEBUG') {
-
-    app.querySelector('#debug-prev')
-      .addEventListener('click', debugPrevious);
-
-    app.querySelector('#debug-skip')
-      .addEventListener('click', debugNext);
-
-    app.querySelector('#debug-exit')
-      .addEventListener('click', () => title());
-  }
-
+  gameExtension.onQuestion?.(q);
 
   SoundManager.playSe('syutsudai');
 
@@ -1920,16 +1471,7 @@ function showQuestion() {
     // タイマー開始
     // ========================================
 
-    if (state.mode === 'DEBUG' && state.debug.disableTimer) {
-
-      const clock = app.querySelector('#clock');
-      if (clock) clock.textContent = '∞';
-
-      const fill = app.querySelector('#fill');
-      if (fill) fill.style.width = '100%';
-
-    } else {
-
+    if (!gameExtension.overrideTimer?.()) {
       state.deadline = performance.now() + limit * 1000;
       state.timer = setInterval(tick, 30);
       tick();
@@ -2227,7 +1769,7 @@ function answer(value) {
   if (correct) {
     state.correct++;
 
-    if (state.mode !== 'DEBUG') {
+    if (!gameExtension.isPractice?.()) {
       state.score += earned;
     }
   }
@@ -2297,23 +1839,18 @@ function answer(value) {
     const rankEl = document.querySelector('#rank-name');
 
     if (rankEl) {
-      rankEl.textContent = state.mode === 'DEBUG'
-        ? 'デバッグ'
-        : state.mode === 'HUNDRED_CHALLENGE'
+      rankEl.textContent = gameExtension.rankCaption?.() ?? ( state.mode === 'HUNDRED_CHALLENGE'
           ? 'ライフ'
           :
-          rankDisplayName(state.score)
-        ;
+          rankDisplayName(state.score));
     }
 
     const targetEl = document.querySelector('#rank-target');
 
     if (targetEl) {
-      targetEl.textContent = state.mode === 'DEBUG'
-        ? 'ID: ' + q.id
-        : state.mode === 'HUNDRED_CHALLENGE'
+      targetEl.textContent = gameExtension.rankTarget?.(q, false) ?? ( state.mode === 'HUNDRED_CHALLENGE'
           ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-          : nextRankTarget(state.score);
+          : nextRankTarget(state.score));
     }
 
     state.history.push({
@@ -2388,10 +1925,7 @@ function answer(value) {
   state.advanceTimer = setTimeout(() => {
     state.advanceTimer = null;
 
-    if (state.mode === 'DEBUG') {
-      debugNext();
-      return;
-    }
+    if (gameExtension.advance?.()) return;
 
 
     state.index++;
@@ -2609,10 +2143,7 @@ async function submitRanking(score, name) {
 }
 
 function result(abandoned = false) {
-  if (state.mode === 'DEBUG') {
-    debugSettings('デバッグセッションを終了しました。');
-    return;
-  }
+  if (gameExtension.onResult?.()) return;
 
   clearTimer();
 

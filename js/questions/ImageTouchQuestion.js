@@ -124,13 +124,6 @@ class ImageTouchQuestion extends BaseQuestion {
                             alt="画像タッチクイズの画像"
                         >
 
-                        <svg
-                            class="image-touch-debug-overlay"
-                            viewBox="0 0 1000 1000"
-                            preserveAspectRatio="none"
-                            aria-hidden="true"
-                        ></svg>
-
                         <span
                             class="image-touch-marker"
                             aria-hidden="true"
@@ -151,7 +144,6 @@ class ImageTouchQuestion extends BaseQuestion {
       const marker = ui.querySelector('.image-touch-marker');
       const loading = ui.querySelector('.image-touch-loading');
       const ok = ui.querySelector('button');
-      const overlay = ui.querySelector('svg');
 
       this.disposed = false;
 
@@ -195,23 +187,7 @@ class ImageTouchQuestion extends BaseQuestion {
          loading.hidden = true;
          ok.disabled = false;
 
-         if (state.mode === 'DEBUG' && state.debug.showAnswer) {
-            const areas = q.answerAreas ?? [q.answerArea];
-
-            overlay.style.left = img.offsetLeft + 'px';
-            overlay.style.top = img.offsetTop + 'px';
-            overlay.style.width = img.offsetWidth + 'px';
-            overlay.style.height = img.offsetHeight + 'px';
-
-            overlay.innerHTML = areas.map(a => `
-                    <polygon points="${a.map(p =>
-               `${p.x * 1000},${p.y * 1000}`
-            ).join(' ')
-               }"/>
-                `).join('');
-
-            overlay.style.display = 'block';
-         }
+         gameExtension.onImageLoaded?.(q, img);
 
          updateMarker();
       };
