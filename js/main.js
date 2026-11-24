@@ -1984,8 +1984,16 @@ function answer(value) {
   const q = state.questions[state.index];
 
   const correct = value !== null && (
-    q.type === 'OX'
-      ? String(value).toUpperCase() === String(q.answer).toUpperCase()
+  q.type === 'OX'
+    ? String(value).toUpperCase() === String(q.answer).toUpperCase()
+
+    : q.type === 'MULTIPLE_CHOICE'
+      ? (
+        Array.isArray(value) &&
+        Array.isArray(state.activeAnswers) &&
+        value.length === state.activeAnswers.length &&
+        state.activeAnswers.every(a => value.includes(a))
+      )
 
       : q.type === 'LINE_MATCHING'
         ? value === true
@@ -2008,7 +2016,7 @@ function answer(value) {
                   : q.type === 'POLYHEDRON'
                     ? String(value) === String(q.answer)
 
-                    : ['EFFECT', 'POLYHEDRON', 'NUMBER', 'KANA', 'KATAKANA'].includes(q.type)
+                    : ['NUMBER', 'KANA', 'KATAKANA'].includes(q.type)
                       ? acceptedAnswers(q).includes(String(value))
 
                       : q.type === 'CHARACTER_PANEL'
