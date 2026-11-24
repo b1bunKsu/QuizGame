@@ -3,38 +3,41 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>ノンジャンル検定</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="page.css">
+    <link rel="icon" type="image/png" href="./favicon.png">
     <style>
-      .quiz-shell .quiz-heading .national-rate {
-        position: absolute;
-        right: 265px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 23px;
-        font-weight: bold;
-        width: 150px;
-        display: flex;
-        align-items: baseline;
-        justify-content: flex-start;
-        text-align: left;
-        white-space: nowrap;
-        color: #fff;
-        text-shadow: 0 0 5px #000, 0 0 9px #000;
-        pointer-events: none;
-      }
-      .quiz-shell .quiz-heading .national-rate-value {
-        display: inline-block;
-        width: 3ch;
-        text-align: center;
-        font-variant-numeric: tabular-nums;
-      }
+        .quiz-shell .quiz-heading .national-rate {
+            position: absolute;
+            right: 265px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 23px;
+            font-weight: bold;
+            width: 150px;
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-start;
+            text-align: left;
+            white-space: nowrap;
+            color: #fff;
+            text-shadow: 0 0 5px #000, 0 0 9px #000;
+            pointer-events: none;
+        }
+
+        .quiz-shell .quiz-heading .national-rate-value {
+            display: inline-block;
+            width: 3ch;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
     </style>
     <meta name="robots" content="noindex, nofollow">
 </head>
 
-<body>
+<body class="portal-page">
     <div id="rotate-notice" role="status" aria-live="polite" hidden>
         <div class="rotate-notice-content">
             <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -42,9 +45,62 @@
             <div class="rotate-description">このゲームはスマートフォンの横画面に対応しています</div>
         </div>
     </div>
-    <main id="stage">
-        <section id="app" aria-live="polite"></section>
+    <header class="portal-header">
+        <div class="portal-brand"><span class="portal-mark" aria-hidden="true">Q</span>
+            <div>ノンジャンル検定<small>NON-GENRE QUIZ GAME</small></div>
+        </div>
+        <nav aria-label="ページ内メニュー"><a href="#about">ゲーム紹介</a><a href="#controls">操作方法</a></nav>
+    </header>
+    <main class="portal-content">
+        <div class="portal-gamebar"><span>GAME SCREEN <small> / 16:9</small></span><button id="fullscreen-toggle"
+                type="button">⛶ フルスクリーン</button></div>
+        <div id="game-frame">
+            <div id="stage">
+                <section id="app" aria-live="polite"></section>
+            </div>
+        </div>
+        <div class="portal-gamefoot"><span>PC・スマートフォン対応</span><span>1280 × 720</span></div>
+        <section class="portal-section" id="about">
+            <p class="portal-kicker">ABOUT THE GAME</p>
+            <h1>知識とスピードで、限界に挑戦。</h1>
+            <p>さまざまなジャンルと出題形式のクイズに挑戦するゲームです。正確さと解答スピードを武器に、ハイスコアを目指しましょう。</p>
+        </section>
+        <section class="portal-section" id="modes">
+            <p class="portal-kicker">GAME MODES</p>
+            <h2>ゲームモード</h2>
+            <div class="portal-modes">
+                <article><span class="portal-mode-num">01 / STANDARD</span>
+                    <h3>スタンダード</h3>
+                    <p>全25問、1問20秒。ハイスコアを競おう。</p>
+                </article>
+                <article><span class="portal-mode-num">02 / HIGH SPEED</span>
+                    <h3>ハイスピード</h3>
+                    <p>全15問、1問5秒。素早い判断力が試されるスピード勝負。</p>
+                </article>
+                <article><span class="portal-mode-num">03 / CHALLENGE</span>
+                    <h3>100問チャレンジ</h3>
+                    <p>ライフ5からスタート。</p>
+                    <p>7問連続正解でライフが1回復。100問正解を目指そう。</p>
+                </article>
+            </div>
+        </section>
+        <section class="portal-section" id="controls">
+            <p class="portal-kicker">KEYBOARD</p>
+            <h2>キーボード操作</h2>
+            <p>タイピング形式では物理キーボードを使用できます。</p>
+            <dl class="portal-keys">
+                <dt><kbd>A–Z</kbd> <kbd>0–9</kbd></dt>
+                <dd>文字・数字の入力（問題形式に応じて）</dd>
+                <dt><kbd>Enter</kbd></dt>
+                <dd>解答確定</dd>
+                <dt><kbd>Backspace</kbd></dt>
+                <dd>文字の削除</dd>
+                <dt><kbd>F11</kbd></dt>
+                <dd>ブラウザの全画面切り替え（対応ブラウザ）</dd>
+            </dl>
+        </section>
     </main>
+    <footer class="portal-footer">2026 b1bunKsu All Rights Reserved.</footer>
     <script defer src="js/questions/BaseQuestion.js"></script>
     <script defer src="js/questions/TypingSupport.js"></script>
     <script defer src="js/questions/SharedValidators.js"></script>
@@ -69,6 +125,7 @@
     <script defer src="js/questions/ImageTouchQuestion.js"></script>
     <script defer src="js/QuestionManager.js"></script>
     <script defer src="js/SoundManager.js"></script>
+    <script defer src="js/page.js"></script>
     <script defer src="js/main.js"></script>
 </body>
 

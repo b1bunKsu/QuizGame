@@ -1,0 +1,285 @@
+/* 公開ページ専用。ゲーム内のスタイルには干渉しない。 */
+html:has(body.portal-page),
+body.portal-page {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+    background: #101722;
+}
+
+body.portal-page {
+    color: #e9eff8;
+    font-family: system-ui, sans-serif;
+    font-weight: 400;
+}
+
+.portal-header,
+.portal-content,
+.portal-footer {
+    max-width: 1344px;
+    margin: auto;
+    padding-inline: 32px;
+}
+
+.portal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 22px;
+}
+
+.portal-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.portal-brand small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: .16em;
+    color: #a1b3cc;
+}
+
+.portal-mark {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #a3c5ff;
+    color: #142238;
+    font-size: 28px;
+}
+
+.portal-header nav {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.portal-header a {
+    color: #c6d5eb;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.portal-header a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+.portal-gamebar,
+.portal-gamefoot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #a1b3cc;
+    font-size: 12px;
+    letter-spacing: .06em;
+}
+
+.portal-gamebar {
+    padding: 12px 0;
+    border-top: 1px solid #344156;
+}
+
+#fullscreen-toggle {
+    background: #25354d;
+    color: #eef5ff;
+    border: 1px solid #526b8d;
+    border-radius: 7px;
+    padding: 9px 14px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#fullscreen-toggle:hover {
+    background: #385174;
+}
+
+#game-frame {
+    position: relative;
+    width: 100%;
+    max-width: 1280px;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    background: #080d15;
+    outline: 1px solid #344156;
+    border-radius: 8px;
+}
+
+#game-frame:fullscreen {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    outline: none;
+}
+
+body.portal-page.portal-fullscreen {
+    overflow: hidden;
+}
+
+.portal-fullscreen #game-frame {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    z-index: 19000;
+}
+
+.portal-fullscreen .portal-header,
+.portal-fullscreen .portal-gamebar,
+.portal-fullscreen .portal-gamefoot,
+.portal-fullscreen .portal-section,
+.portal-fullscreen .portal-footer {
+    visibility: hidden;
+}
+
+.portal-gamefoot {
+    padding-block: 12px;
+}
+
+.portal-section {
+    margin-top: 48px;
+    scroll-margin-top: 20px;
+}
+
+.portal-section h1,
+.portal-section h2 {
+    margin: 6px 0 14px;
+    font-size: clamp(22px, 3vw, 32px);
+}
+
+.portal-section p {
+    color: #b9c7da;
+    line-height: 1.85;
+}
+
+.portal-section .portal-kicker {
+    color: #91b9ff;
+    font-size: 12px;
+    letter-spacing: .16em;
+    font-weight: 700;
+    margin: 0;
+}
+
+.portal-modes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.portal-modes article {
+    background: #1b2637;
+    border: 1px solid #344156;
+    border-radius: 12px;
+    padding: 22px;
+}
+
+.portal-mode-num {
+    font-size: 11px;
+    letter-spacing: .1em;
+    color: #91b9ff;
+}
+
+.portal-modes h3 {
+    margin: 12px 0 8px;
+    font-size: 19px;
+}
+
+.portal-modes p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.portal-keys {
+    display: grid;
+    grid-template-columns: minmax(100px, 180px) 1fr;
+    margin: 0;
+}
+
+.portal-keys dt,
+.portal-keys dd {
+    margin: 0;
+    padding: 14px 0;
+    border-bottom: 1px solid #344156;
+    font-size: 14px;
+}
+
+.portal-keys kbd {
+    display: inline-block;
+    background: #25354d;
+    border: 1px solid #52617a;
+    border-radius: 5px;
+    padding: 4px 8px;
+    color: #e9eff8;
+}
+
+.portal-footer {
+    margin-top: 48px;
+    padding-block: 24px;
+    text-align: center;
+    color: #8c9eb8;
+    font-size: 11px;
+    letter-spacing: .15em;
+}
+
+@media(max-width:700px) {
+
+    .portal-header,
+    .portal-content,
+    .portal-footer {
+        padding-inline: 12px;
+    }
+
+    .portal-header {
+        flex-wrap: wrap;
+    }
+
+    .portal-brand {
+        font-size: 18px;
+    }
+
+    .portal-modes {
+        grid-template-columns: 1fr;
+    }
+
+    .portal-section {
+        margin-top: 32px;
+    }
+}
+
+/* =========================================================
+   通常表示時のスクロールを許可
+   ========================================================= */
+
+html:has(body.portal-page) {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body.portal-page {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+}
+
+/* フルスクリーン時のみスクロール禁止 */
+
+html:has(body.portal-fullscreen),
+html:has(#game-frame:fullscreen),
+body.portal-page.portal-fullscreen {
+    overflow: hidden;
+}

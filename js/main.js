@@ -65,7 +65,6 @@ document.addEventListener('keydown', event => {
   if (!app.querySelector('.quiz-shell')) return;
   if (state.inputEnabled) return;
 
-  event.preventDefault();
   event.stopImmediatePropagation();
 }, true);
 
@@ -91,10 +90,11 @@ const GAME_HEIGHT = 720;
 
 function resize() {
   const viewport = window.visualViewport;
-  const width = viewport ? viewport.width : window.innerWidth;
-  const height = viewport ? viewport.height : window.innerHeight;
-  const offsetLeft = viewport ? viewport.offsetLeft : 0;
-  const offsetTop = viewport ? viewport.offsetTop : 0;
+  const frame = document.querySelector('#game-frame');
+  const width = frame ? frame.clientWidth : (viewport ? viewport.width : window.innerWidth);
+  const height = frame ? frame.clientHeight : (viewport ? viewport.height : window.innerHeight);
+  const offsetLeft = frame ? 0 : (viewport ? viewport.offsetLeft : 0);
+  const offsetTop = frame ? 0 : (viewport ? viewport.offsetTop : 0);
 
   const scale = Math.min(width / GAME_WIDTH, height / GAME_HEIGHT);
   stage.style.transform = `scale(${scale})`;
@@ -107,7 +107,7 @@ function resize() {
   // タッチ主体の小型端末だけ縦向き案内を表示。PCの縦長ウィンドウは対象外。
   const mobile = window.matchMedia('(pointer: coarse)').matches
     && Math.min(window.screen.width, window.screen.height) <= 600;
-  const portrait = height > width;
+  const portrait = (viewport ? viewport.height : window.innerHeight) > (viewport ? viewport.width : window.innerWidth);
   const showNotice = mobile && portrait;
   rotateNotice.hidden = !showNotice;
   stage.style.visibility = showNotice ? 'hidden' : 'visible';
@@ -115,6 +115,11 @@ function resize() {
 
 addEventListener('resize', resize);
 addEventListener('orientationchange', resize);
+document.addEventListener('fullscreenchange', resize);
+const gameFrame = document.querySelector('#game-frame');
+if (gameFrame && typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(resize).observe(gameFrame);
+}
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', resize);
   window.visualViewport.addEventListener('scroll', resize);
