@@ -1779,13 +1779,21 @@ function answer(value) {
     }
   }
 
+  // ライフ回復判定用フラグ
+  let lifeUp = false;
+
   if (state.mode === 'HUNDRED_CHALLENGE') {
     if (correct) {
       state.streak++;
 
       if (state.streak >= 7) {
         state.streak = 0;
-        state.lives = Math.min(5, state.lives + 1);
+
+        // ライフに空きがある場合のみ回復
+        if (state.lives < 5) {
+          state.lives++;
+          lifeUp = true;
+        }
       }
 
     } else {
@@ -1853,9 +1861,15 @@ function answer(value) {
     const targetEl = document.querySelector('#rank-target');
 
     if (targetEl) {
-      targetEl.textContent = gameExtension.rankTarget?.(q, false) ?? (state.mode === 'HUNDRED_CHALLENGE'
-        ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-        : nextRankTarget(state.score));
+      targetEl.textContent = gameExtension.rankTarget?.(q, false) ??
+        (state.mode === 'HUNDRED_CHALLENGE'
+          ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
+          : nextRankTarget(state.score));
+
+      // ライフ回復SE
+      if (lifeUp) {
+        SoundManager.playSe('oneUp');
+      }
     }
 
     state.history.push({
@@ -2217,7 +2231,7 @@ function result(abandoned = false) {
                   途中放棄
               </div>
           ` : challenge ? `
-              <div class="result-simple-label">CORRECT</div>
+              <div class="result-simple-label">正解数</div>
               <div class="result-simple-rank">
                   ${state.correct}問
               </div>
