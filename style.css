@@ -5345,3 +5345,105 @@ body {
     position: relative;
     z-index: 10;
 }
+
+/* =========================================================
+   デバッグ画面：問題数一覧
+   ========================================================= */
+
+.debug-screen {
+    position: relative;
+
+    /* 既存の設定項目を左側へ移動 */
+    padding-right: 380px;
+    box-sizing: border-box;
+}
+
+.debug-question-counts {
+    position: absolute;
+
+    top: 50%;
+    right: 45px;
+    transform: translateY(-50%);
+
+    width: 340px;
+    padding: 18px 20px;
+    box-sizing: border-box;
+
+    background-color: rgba(0, 0, 0, 0.50);
+    border: 2px solid #a5cfff;
+    border-radius: 8px;
+
+    font-family: "NotoJP", sans-serif;
+    color: white;
+}
+
+/* 一覧タイトル */
+.debug-count-title {
+    font-size: 26px;
+    font-weight: bold;
+    text-align: center;
+
+    margin-bottom: 8px;
+}
+
+/* 総問題数 */
+.debug-count-total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    font-size: 18px;
+    font-weight: bold;
+
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.debug-count-total span {
+    font-size: 34px;
+    color: #a5cfff;
+}
+
+/* 問題数一覧 */
+.debug-count-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    max-height: 460px;
+    overflow-y: auto;
+}
+
+/* 各問題形式の行 */
+.debug-count-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    min-height: 23px;
+    padding: 0 4px;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* 問題形式名 */
+.debug-count-type {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* 問題数 */
+.debug-count-value {
+    font-size: 18px;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 読み込み中・エラー表示 */
+.debug-count-message {
+    font-size: 17px;
+    text-align: center;
+    padding: 20px 0;
+}

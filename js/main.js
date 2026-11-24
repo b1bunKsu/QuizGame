@@ -454,6 +454,105 @@ function settings() {
   });
 }
 
+async function updateDebugQuestionCounts() {
+
+  const panel = app.querySelector('#debug-question-counts');
+
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="debug-count-title">問題数一覧</div>
+    <div class="debug-count-message">
+      問題数を取得中…
+    </div>
+  `;
+
+  try {
+
+    const questions = await loadSupportedQuestions();
+
+    // 画面遷移済みなら処理を終了
+    if (!panel.isConnected) return;
+
+    // ORDER-AをORDERに統合
+    const normalizeType = type =>
+      type === 'ORDER-A' ? 'ORDER' : type;
+
+    // 登録されている問題形式を取得
+    const types = [...new Set(
+      [...QuestionManager.types.keys()]
+        .map(normalizeType)
+    )];
+
+    // 各問題形式を0問で初期化
+    const counts = new Map(
+      types.map(type => [type, 0])
+    );
+
+    // 問題数を集計
+    for (const q of questions) {
+
+      const type = normalizeType(q.type);
+
+      counts.set(
+        type,
+        (counts.get(type) ?? 0) + 1
+      );
+
+    }
+
+    // 一覧を表示
+    panel.innerHTML = `
+      <div class="debug-count-title">
+        問題数一覧
+      </div>
+
+      <div class="debug-count-total">
+        総問題数
+        <span>
+          ${questions.length.toLocaleString('ja-JP')} 問
+        </span>
+      </div>
+
+      <div class="debug-count-list">
+
+        ${[...counts.entries()].map(([type, count]) => `
+          <div class="debug-count-row">
+
+            <span class="debug-count-type">
+              ${esc(type)}
+            </span>
+
+            <span class="debug-count-value">
+              ${count.toLocaleString('ja-JP')} 問
+            </span>
+
+          </div>
+        `).join('')}
+
+      </div>
+    `;
+
+  } catch (e) {
+
+    console.error(e);
+
+    if (!panel.isConnected) return;
+
+    panel.innerHTML = `
+      <div class="debug-count-title">
+        問題数一覧
+      </div>
+
+      <div class="debug-count-message">
+        問題数の取得に失敗しました
+      </div>
+    `;
+
+  }
+
+}
+
 function debugSettings(message = '') {
   clearTimer();
 
@@ -462,6 +561,11 @@ function debugSettings(message = '') {
 
   app.innerHTML = `
     <div class="center debug-screen screen-enter">
+
+      <div id="debug-question-counts"
+          class="debug-question-counts">
+      </div>
+
       <div class="settings-title">デバッグモード</div>
 
       <label for="debug-type">問題形式</label>
@@ -552,6 +656,9 @@ function debugSettings(message = '') {
 
   typeInput.addEventListener('change', syncEffect);
   syncEffect();
+
+  // 問題数一覧を更新
+  updateDebugQuestionCounts();
 
   bind({
     'debug-start': () => {
@@ -671,66 +778,80 @@ function loading() {
   `;
 }
 
-async function loadAndStart(fromIntro = false) {
-  const introStart = performance.now();
+// ============================================================
+// 問題JSONの読み込み・正規化・バリデーション
+// ============================================================
 
-  // イントロ経由の場合はBGMを停止しない
-  if (!fromIntro) {
-    SoundManager.stopBgm();
-    loading();
-  }
+async function loadSupportedQuestions() {
 
-  try {
-    const sets = await Promise.all(
-      FILES.map(async f => {
-        const r = await fetch(BASE + f, { cache: 'no-store' });
+  const sets = await Promise.all(
+    FILES.map(async f => {
 
-        if (!r.ok) {
-          throw Error(`${f}: HTTP ${r.status}`);
-        }
+      const r = await fetch(BASE + f, {
+        cache: 'no-store'
+      });
 
-        const data = await r.json();
+      if (!r.ok) {
+        throw Error(`${f}: HTTP ${r.status}`);
+      }
 
-        if (!Array.isArray(data)) {
-          throw Error(`${f}: 配列ではありません`);
-        }
+      const data = await r.json();
 
-        return data;
-      })
-    );
+      if (!Array.isArray(data)) {
+        throw Error(`${f}: 配列ではありません`);
+      }
 
-    const supported = sets.flat()
-      .map(q => {
-        if (!q) return q;
+      return data;
 
-        const type = q.type === 'CUBE'
-          ? 'POLYHEDRON'
-          : q.type === 'MULTI_CHOICE'
-            ? 'MULTIPLE_CHOICE'
-            : q.type;
+    })
+  );
 
-        const answers =
-          type === 'MULTIPLE_CHOICE' ||
-            ['NUMBER', 'KANA', 'KATAKANA', 'EFFECT', 'POLYHEDRON'].includes(type)
-            ? (
-              Array.isArray(q.answers) && q.answers.length
-                ? q.answers
-                : Array.isArray(q.answer)
-                  ? q.answer
-                  : typeof q.answer === 'string'
-                    ? [q.answer]
-                    : []
-            )
-            : q.answers;
+  const supported = sets.flat()
 
-        return {
-          ...q,
-          type,
-          answers,
-          imagePath: q.imagePath ?? q.image
-        };
-      })
-      .filter(q =>
+    // ========================================
+    // 問題形式・解答データの正規化
+    // ========================================
+
+    .map(q => {
+
+      if (!q) return q;
+
+      const type = q.type === 'CUBE'
+        ? 'POLYHEDRON'
+        : q.type === 'MULTI_CHOICE'
+          ? 'MULTIPLE_CHOICE'
+          : q.type;
+
+      const answers =
+        type === 'MULTIPLE_CHOICE' ||
+          ['NUMBER', 'KANA', 'KATAKANA', 'EFFECT', 'POLYHEDRON'].includes(type)
+          ? (
+            Array.isArray(q.answers) && q.answers.length
+              ? q.answers
+              : Array.isArray(q.answer)
+                ? q.answer
+                : typeof q.answer === 'string'
+                  ? [q.answer]
+                  : []
+          )
+          : q.answers;
+
+      return {
+        ...q,
+        type,
+        answers,
+        imagePath: q.imagePath ?? q.image
+      };
+
+    })
+
+    // ========================================
+    // 出題可能な問題のみ抽出
+    // ========================================
+
+    .filter(q =>
+      q && (
+
         (q.type === 'CHOICE' &&
           Array.isArray(q.choices) &&
           q.choices.length >= 2) ||
@@ -767,8 +888,35 @@ async function loadAndStart(fromIntro = false) {
             typeof a === 'string' && a.length > 0
           )
         )
-      );
 
+      )
+    );
+
+  return supported;
+
+}
+
+async function loadAndStart(fromIntro = false) {
+
+  const introStart = performance.now();
+
+  // イントロ経由の場合はBGMを停止しない
+  if (!fromIntro) {
+    SoundManager.stopBgm();
+    loading();
+  }
+
+  try {
+
+    // ========================================
+    // 共通関数から問題を取得
+    // ========================================
+
+    const supported = await loadSupportedQuestions();
+
+    // ========================================
+    // ゲームモードごとの問題抽出
+    // ========================================
 
     const filtered = state.mode === 'DEBUG'
       ? supported.filter(q =>
@@ -776,7 +924,9 @@ async function loadAndStart(fromIntro = false) {
         q.type === state.debug.type
       )
       : state.mode === 'HIGH_SPEED'
-        ? supported.filter(q => HIGHSPEED_TYPES.has(q.type))
+        ? supported.filter(q =>
+          HIGHSPEED_TYPES.has(q.type)
+        )
         : supported;
 
     if (!filtered.length) {
@@ -787,14 +937,21 @@ async function loadAndStart(fromIntro = false) {
       );
     }
 
+    // ========================================
     // デバッグはID順、通常プレイはランダム
+    // ========================================
+
     if (state.mode === 'DEBUG') {
 
       filtered.sort((a, b) => {
+
         const aId = Number(a.id);
         const bId = Number(b.id);
 
-        if (Number.isFinite(aId) && Number.isFinite(bId)) {
+        if (
+          Number.isFinite(aId) &&
+          Number.isFinite(bId)
+        ) {
           return aId - bId;
         }
 
@@ -803,11 +960,18 @@ async function loadAndStart(fromIntro = false) {
           'ja',
           { numeric: true }
         );
+
       });
 
     } else {
+
       shuffle(filtered);
+
     }
+
+    // ========================================
+    // 出題数の設定
+    // ========================================
 
     const count = state.mode === 'DEBUG'
       ? filtered.length
@@ -821,7 +985,10 @@ async function loadAndStart(fromIntro = false) {
     state.questions = filtered.slice(0, count);
     state.index = 0;
 
-    // デバッグでIDが指定されていれば、その問題から開始
+    // ========================================
+    // デバッグでIDが指定されている場合
+    // ========================================
+
     if (state.mode === 'DEBUG' && state.debug.id) {
 
       const targetIndex = state.questions.findIndex(
@@ -829,13 +996,20 @@ async function loadAndStart(fromIntro = false) {
       );
 
       if (targetIndex === -1) {
+
         throw Error(
           `指定した問題ID ${state.debug.id} が見つかりません`
         );
+
       }
 
       state.index = targetIndex;
+
     }
+
+    // ========================================
+    // ゲーム状態の初期化
+    // ========================================
 
     state.score = 0;
     state.correct = 0;
@@ -843,19 +1017,27 @@ async function loadAndStart(fromIntro = false) {
     state.lives = 5;
     state.streak = 0;
 
-    // イントロ画面は最低2秒間表示する
+    // ========================================
+    // イントロ画面の表示時間を確保
+    // ========================================
+
     if (fromIntro) {
+
       const elapsed = performance.now() - introStart;
+
       const remaining = Math.max(
         0,
         QUIZ_INTRO_DURATION - elapsed
       );
 
       if (remaining > 0) {
+
         await new Promise(resolve => {
           setTimeout(resolve, remaining);
         });
+
       }
+
     }
 
     // イントロ経由の場合は既にBGMが再生されている
@@ -863,20 +1045,33 @@ async function loadAndStart(fromIntro = false) {
       SoundManager.playBgm(state.mode);
     }
 
+    // ========================================
+    // 出題開始
+    // ========================================
+
     showQuestion();
 
   } catch (e) {
+
     console.error(e);
 
     if (state.mode === 'DEBUG') {
-      debugSettings('問題の読み込みに失敗しました: ' + e.message);
+
+      debugSettings(
+        '問題の読み込みに失敗しました: ' + e.message
+      );
+
     } else {
+
       title(
         '問題の読み込みに失敗しました。ネット接続とGitHubのJSON公開状態を確認してください。詳細: ' +
         e.message
       );
+
     }
+
   }
+
 }
 
 function shuffle(a) {
@@ -1984,45 +2179,45 @@ function answer(value) {
   const q = state.questions[state.index];
 
   const correct = value !== null && (
-  q.type === 'OX'
-    ? String(value).toUpperCase() === String(q.answer).toUpperCase()
+    q.type === 'OX'
+      ? String(value).toUpperCase() === String(q.answer).toUpperCase()
 
-    : q.type === 'MULTIPLE_CHOICE'
-      ? (
-        Array.isArray(value) &&
-        Array.isArray(state.activeAnswers) &&
-        value.length === state.activeAnswers.length &&
-        state.activeAnswers.every(a => value.includes(a))
-      )
+      : q.type === 'MULTIPLE_CHOICE'
+        ? (
+          Array.isArray(value) &&
+          Array.isArray(state.activeAnswers) &&
+          value.length === state.activeAnswers.length &&
+          state.activeAnswers.every(a => value.includes(a))
+        )
 
-      : q.type === 'LINE_MATCHING'
-        ? value === true
-
-        : q.type === 'IMAGE_TOUCH'
+        : q.type === 'LINE_MATCHING'
           ? value === true
 
-          : q.type === 'GROUP'
+          : q.type === 'IMAGE_TOUCH'
             ? value === true
 
-            : q.type === 'ORDER' || q.type === 'ORDER-A'
+            : q.type === 'GROUP'
               ? value === true
 
-              : q.type === 'REARRANGEMENT'
-                ? String(value) === String(q.answer)
+              : q.type === 'ORDER' || q.type === 'ORDER-A'
+                ? value === true
 
-                : q.type === 'EFFECT'
-                  ? acceptedAnswers(q).includes(String(value))
+                : q.type === 'REARRANGEMENT'
+                  ? String(value) === String(q.answer)
 
-                  : q.type === 'POLYHEDRON'
-                    ? String(value) === String(q.answer)
+                  : q.type === 'EFFECT'
+                    ? acceptedAnswers(q).includes(String(value))
 
-                    : ['NUMBER', 'KANA', 'KATAKANA'].includes(q.type)
-                      ? acceptedAnswers(q).includes(String(value))
+                    : q.type === 'POLYHEDRON'
+                      ? String(value) === String(q.answer)
 
-                      : q.type === 'CHARACTER_PANEL'
-                        ? String(value) === String(q.answer)
+                      : ['NUMBER', 'KANA', 'KATAKANA'].includes(q.type)
+                        ? acceptedAnswers(q).includes(String(value))
 
-                        : value === q.choices[0]
+                        : q.type === 'CHARACTER_PANEL'
+                          ? String(value) === String(q.answer)
+
+                          : value === q.choices[0]
   );
 
   finalizeNationalRate(q, correct, value === null);
