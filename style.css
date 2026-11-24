@@ -5229,3 +5229,22 @@ body {
     z-index: 10;
 }
 
+/* =========================================================
+   ゲーム内のテキスト選択を禁止
+   ========================================================= */
+
+#stage,
+#stage * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* テキスト入力欄のみ選択を許可 */
+
+#stage input,
+#stage textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
