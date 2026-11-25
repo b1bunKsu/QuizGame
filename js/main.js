@@ -1,7 +1,7 @@
 
 // Phase 11: answer feedback timing and screen transitions.
 
-const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/main/questions/';
+const BASE = 'https://raw.githubusercontent.com/b1bunKsu/STEMQuestion/main/questions/';
 
 const gameExtension = globalThis.QuizGameExtension ?? {};
 
@@ -158,7 +158,7 @@ function bind(actions) {
 }
 
 const FILES = [
-  'choices.json',
+  'choice.json',
   'ox.json',
   'multiple_choice.json',
   'one_way.json',
@@ -251,8 +251,8 @@ function title(message = '') {
 
   app.innerHTML = `
     <div class="center title-screen screen-enter">
-      <div class="title">ノンジャンル検定</div>
-      <div class="subtitle">ジャンルを問わず様々な問題が出題されるクイズゲームです</div>
+      <div class="title">理系検定</div>
+      <div class="subtitle">理系学問に関する問題が出題されるクイズゲームです</div>
 
       <input
         id="name"
