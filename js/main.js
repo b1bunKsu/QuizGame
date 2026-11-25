@@ -8,6 +8,20 @@ const gameExtension = globalThis.QuizGameExtension ?? {};
 const app = document.querySelector('#app');
 const stage = document.querySelector('#stage');
 
+// ============================================================
+// ランク共通設定
+// ============================================================
+
+const RANK_THRESHOLDS = [
+  { rank: 'D', minScore: 0 },
+  { rank: 'C', minScore: 1000 },
+  { rank: 'B', minScore: 2000 },
+  { rank: 'A', minScore: 3000 },
+  { rank: 'S', minScore: 3500 },
+  { rank: 'SS', minScore: 4000 },
+  { rank: 'SSS', minScore: 4500 }
+];
+
 const state = {
   name: 'PLAYER',
   questions: [],
@@ -729,22 +743,28 @@ function clearTimer() {
 
 function nextRankTarget(score) {
 
-  if (score < 500) return 500;
-  if (score < 1000) return 1000;
-  if (score < 1500) return 1500;
-  if (score < 2000) return 2000;
-  if (score < 3000) return 3000;
-  if (score < 4000) return 4000;
+  // 次のランクの必要点数を取得
+  const nextRank = RANK_THRESHOLDS.find(
+    item => score < item.minScore
+  );
 
-  // 4000点以上では保存済みの自己ベストを表示
+  if (nextRank) {
+    return nextRank.minScore;
+  }
+
+  // 最高ランク到達後は自己ベストを表示
   let bestScore = 0;
 
   try {
+
     bestScore = Number(
       localStorage.getItem('quizgame_web_best_STANDARD')
     ) || 0;
+
   } catch (e) {
+
     console.warn(e);
+
   }
 
   return bestScore > 0 ? bestScore : 'BEST';
@@ -2035,21 +2055,26 @@ function animateScore(el, from, to) {
 }
 
 function rank(score) {
-  return score < 1000 ? 'C'
-    : score < 2000 ? 'B'
-      : score < 2500 ? 'A'
-        : score < 3000 ? 'S'
-          : score < 3500 ? 'SS'
-            : score < 4000 ? 'SSS'
-              : '自己ベスト';
+
+  for (let i = RANK_THRESHOLDS.length - 1; i >= 0; i--) {
+
+    if (score >= RANK_THRESHOLDS[i].minScore) {
+      return RANK_THRESHOLDS[i].rank;
+    }
+  }
+
+  return RANK_THRESHOLDS[0].rank;
 }
 
 function rankDisplayName(score) {
-  const name = rank(score);
 
-  return name === '自己ベスト'
-    ? '自己ベスト'
-    : name + 'ランク';
+  const nextRank = RANK_THRESHOLDS.find(
+    item => score < item.minScore
+  );
+
+  return nextRank
+    ? nextRank.rank + 'ランク'
+    : '自己ベスト';
 }
 
 // ============================================================
@@ -2171,14 +2196,7 @@ function result(abandoned = false) {
   const score = state.score;
 
   // ランク判定
-  const resultRank =
-    score < 1000 ? 'D'
-      : score < 2000 ? 'C'
-        : score < 2500 ? 'B'
-          : score < 3000 ? 'A'
-            : score < 3500 ? 'S'
-              : score < 4000 ? 'SS'
-                : 'SSS';
+  const resultRank = rank(score);
 
   // 自己ベストの取得
   const key = 'quizgame_web_best_STANDARD';
