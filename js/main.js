@@ -1,7 +1,7 @@
 
 // Phase 11: answer feedback timing and screen transitions.
 
-const BASE = 'https://raw.githubusercontent.com/b1bunKsu/STEMQuestion/main/questions/';
+const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/refs/heads/main/questions/';
 
 const gameExtension = globalThis.QuizGameExtension ?? {};
 
@@ -158,7 +158,7 @@ function bind(actions) {
 }
 
 const FILES = [
-  'choice.json',
+  'choices.json',
   'ox.json',
   'multiple_choice.json',
   'one_way.json',
