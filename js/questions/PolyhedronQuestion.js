@@ -122,7 +122,7 @@ function setupPolyhedron(answer, host) {
   // ========================================
 
   // 登場時間：0.5秒
-  const ENTRANCE_DURATION = 400;
+  const ENTRANCE_DURATION = 500;
 
   // 登場開始時の拡大率：400%
   const ENTRANCE_START_SCALE = 4;
@@ -374,7 +374,7 @@ function setupPolyhedron(answer, host) {
         // Safari対応：通常サイズで文字を描画
         // ========================================
 
-        const textSize = isTriangle ? 0.5 : 0.6;
+        const textSize = 0.6;
 
         // 極小フォントを避けるための基準サイズ
         const FONT_SIZE = 48;

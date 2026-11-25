@@ -88,8 +88,8 @@ function createGroupUI(q, ui) {
     groupWidth * count +
     groupGap * (count - 1);
 
-  // 移動中の操作を防ぐ
-  let moving = false;
+  // 移動中の選択肢を個別に管理
+  const movingChoices = new Set();
 
   // ----------------------------------------------------------
   // 選択肢のX座標
@@ -263,10 +263,13 @@ function createGroupUI(q, ui) {
 
       button.addEventListener("click", () => {
 
-        if (state.locked || moving) return;
+        if (state.locked) return;
 
         const index = Number(button.dataset.index);
         const direction = Number(button.dataset.direction);
+
+        // この選択肢自身が移動中の場合のみ拒否
+        if (movingChoices.has(index)) return;
 
         moveChoice(index, direction);
       });
@@ -278,7 +281,7 @@ function createGroupUI(q, ui) {
 
     okButton.addEventListener("click", () => {
 
-      if (state.locked || moving) return;
+      if (state.locked || movingChoices.size > 0) return;
 
       const correct = entries.every((entry, index) => {
 
@@ -298,11 +301,14 @@ function createGroupUI(q, ui) {
   // 選択肢の移動
   // ----------------------------------------------------------
 
+  // ----------------------------------------------------------
+  // 選択肢の移動
+  // ----------------------------------------------------------
+
   function moveChoice(index, direction) {
 
-    SoundManager.playSe("slot");
-
-    if (state.locked || moving) return;
+    // この選択肢自身が移動中の場合のみ拒否
+    if (state.locked || movingChoices.has(index)) return;
 
     const current = locations[index];
 
@@ -322,16 +328,19 @@ function createGroupUI(q, ui) {
 
     if (!element) return;
 
-    // X座標だけを変更する
+    // 移動SE
+    SoundManager.playSe("slot");
+
+    // X座標の計算
     const oldX = getChoiceX(current);
     const newX = getChoiceX(next);
 
     const deltaX = newX - oldX;
 
-    moving = true;
+    // この選択肢を移動中として登録
+    movingChoices.add(index);
 
-    // アニメーション中は位置を変更せず、
-    // transformで水平移動する
+    // 水平移動アニメーション
     const animation = element.animate(
       [
         {
@@ -348,20 +357,53 @@ function createGroupUI(q, ui) {
       }
     );
 
+    // ========================================
+    // アニメーション終了
+    // ========================================
+
     animation.addEventListener("finish", () => {
 
       // 移動先を確定
       locations[index] = next;
 
-      // 再描画して正しい矢印状態を反映
-      render();
+      // 移動後の座標を直接反映
+      element.style.left = `${newX}px`;
 
-      moving = false;
+      // アニメーションによるtransformを解除
+      animation.cancel();
+
+      // 左右の矢印ボタンを取得
+      const leftButton = element.querySelector(
+        '[data-direction="-1"]'
+      );
+
+      const rightButton = element.querySelector(
+        '[data-direction="1"]'
+      );
+
+      // この選択肢の矢印状態だけを更新
+      if (leftButton) {
+        leftButton.disabled = state.locked || next === 0;
+      }
+
+      if (rightButton) {
+        rightButton.disabled =
+          state.locked || next === count - 1;
+      }
+
+      // 移動中の登録を解除
+      movingChoices.delete(index);
 
     }, { once: true });
 
+    // ========================================
+    // アニメーションキャンセル
+    // ========================================
+
     animation.addEventListener("cancel", () => {
-      moving = false;
+
+      movingChoices.delete(index);
+
     }, { once: true });
   }
 
