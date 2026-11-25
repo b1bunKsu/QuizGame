@@ -232,8 +232,8 @@ function createTypingUI(q, ui) {
     }
       </div>
 
-      <div class="typing-keys">
-        ${keyboardRows}
+      <div class="typing-keys ${isNum && state.qwerty ? 'qwerty-keyboard' : ''}">
+          ${keyboardRows}
       </div>
 
     </div>

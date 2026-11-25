@@ -2647,13 +2647,13 @@ body {
     background: rgba(0, 0, 0, .5);
 }
 
-/* QWERTY staggered rows in JavaFX NumberQuestionUI */
+/* QWERTY配列の文字キーの位置調整 */
 
-.quiz-shell .fx-number-typing .typing-row-2 {
+.quiz-shell .fx-number-typing .qwerty-keyboard .typing-row-2 > .typing-key {
     transform: translateX(15px);
 }
 
-.quiz-shell .fx-number-typing .typing-row-3 {
+.quiz-shell .fx-number-typing .qwerty-keyboard .typing-row-3 > .typing-key {
     transform: translateX(30px);
 }
 
