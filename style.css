@@ -2649,11 +2649,11 @@ body {
 
 /* QWERTY配列の文字キーの位置調整 */
 
-.quiz-shell .fx-number-typing .qwerty-keyboard .typing-row-2 > .typing-key {
+.quiz-shell .fx-number-typing .qwerty-keyboard .typing-row-2>.typing-key {
     transform: translateX(15px);
 }
 
-.quiz-shell .fx-number-typing .qwerty-keyboard .typing-row-3 > .typing-key {
+.quiz-shell .fx-number-typing .qwerty-keyboard .typing-row-3>.typing-key {
     transform: translateX(30px);
 }
 
@@ -4880,6 +4880,16 @@ body {
     font-size: 32px;
 }
 
+/* 100問チャレンジ：ライフ表示 */
+.quiz-shell:has(#rank-target) .rank-panel-web #rank-target.life-hearts {
+    font-size: 32px;
+    color: #ff4040 !important;
+}
+
+.quiz-shell #rank-target.life-hearts span {
+    color: #ff4040 !important;
+}
+
 
 /* ==========================================
    IMAGE_TOUCH：マーカーの個別位置調整
@@ -5247,4 +5257,28 @@ body {
 #stage textarea {
     -webkit-user-select: text;
     user-select: text;
+}
+
+/* 100問チャレンジ：ライフ破壊演出 */
+.life-loss-heart {
+    position: relative;
+    display: inline-block;
+}
+
+.life-loss-full {
+    position: absolute;
+    inset: 0;
+    display: inline-block;
+    color: inherit;
+    pointer-events: none;
+}
+
+.life-loss-particle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    color: #ff646b;
+    pointer-events: none;
+    line-height: 1;
+    z-index: 2;
 }

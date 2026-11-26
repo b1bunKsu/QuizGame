@@ -86,7 +86,8 @@ class SoundManager {
         'shuffle',
         'countdown',
         'oneUp',
-        'applause'
+        'applause',
+        'crack'
     ]);
 
     // ========================================

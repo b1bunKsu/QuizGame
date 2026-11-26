@@ -17,7 +17,7 @@ function visualInputType(answer) {
             : 'KANA';
 }
 
-function createVisualTypingUI(q, ui) {
+function createVisualTypingUI(q, ui, selectedEffect) {
 
     const board = ui.closest('.quiz-shell')
         ?.querySelector('.question-center .board');
@@ -44,14 +44,14 @@ function createVisualTypingUI(q, ui) {
     // 今回は開始用の関数を返す。
     let started = false;
 
-    return function startVisual() {
+    return function startVisual(holdIntro = false) {
 
         if (started || !visual.isConnected) return;
 
         started = true;
 
         if (q.type === 'EFFECT') {
-            setupEffect(q.hint, visual);
+            return setupEffect(q.hint, visual, selectedEffect, holdIntro);
         } else {
             setupPolyhedron(q.answer, visual);
         }

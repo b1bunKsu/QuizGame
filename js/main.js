@@ -1140,6 +1140,7 @@ function showQuestion() {
   gameExtension.onQuestion?.(q);
 
   SoundManager.playSe('syutsudai');
+  questionInstance.startIntroAnimation?.();
 
   // ========================================
   // フェード終了後に出題開始
@@ -1147,7 +1148,7 @@ function showQuestion() {
 
   let questionStarted = false;
 
-  const startQuestion = () => {
+  const startQuestion = async () => {
 
     if (questionStarted) return;
 
@@ -1170,7 +1171,9 @@ function showQuestion() {
     // ========================================
 
     if (typeof questionInstance.startAnimation === 'function') {
-      questionInstance.startAnimation();
+      await questionInstance.startAnimation();
+
+      if (!ui.isConnected || state.activeQuestion !== questionInstance || state.locked) return;
     }
 
     // ========================================
@@ -1463,8 +1466,12 @@ function answer(value) {
     const targetEl = document.querySelector('#rank-target');
 
     if (targetEl) {
-      targetEl.textContent = gameExtension.rankTarget?.(q, false) ??
+      const targetText = gameExtension.rankTarget?.(q, false) ??
         GameModeManager.current.rankTarget();
+
+      if (!mode.animateLifeLoss?.(targetEl, targetText, correct)) {
+        targetEl.textContent = targetText;
+      }
 
       mode.onFeedback(lifeUp);
     }

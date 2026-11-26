@@ -23,6 +23,62 @@ class HundredChallengeMode extends BaseGameMode {
     playerScore() { return state.correct + '問'; }
     updateScore(el) { el.textContent = this.playerScore(); }
     onFeedback(lifeUp) { if (lifeUp) SoundManager.playSe('oneUp'); }
+    animateLifeLoss(el, targetText, correct) {
+        if (
+            correct ||
+            !/^♥*♡*$/.test(targetText) ||
+            targetText.length !== this.maxLives ||
+            state.lives < 0 ||
+            state.lives >= this.maxLives
+        ) return false;
+
+        const DURATION = 480;
+        const PARTICLE_COUNT = 9;
+        const PARTICLE_DISTANCE = 42;
+        const PARTICLE_SIZE = 10;
+        const index = state.lives;
+        const fragment = document.createDocumentFragment();
+        let heart;
+        Array.from(targetText).forEach((char, i) => {
+            const span = document.createElement('span');
+            span.textContent = char;
+            if (i === index) {
+                span.className = 'life-loss-heart';
+                heart = span;
+            }
+            fragment.append(span);
+        });
+        el.replaceChildren(fragment);
+        const full = document.createElement('span');
+        full.className = 'life-loss-full';
+        full.textContent = '♥';
+        heart.append(full);
+        SoundManager.playSe('crack');
+        full.animate([
+            { transform: 'scale(1)', opacity: 1 },
+            { transform: 'scale(1.4)', opacity: 1, offset: .22 },
+            { transform: 'scale(.15)', opacity: 0 }
+        ], { duration: DURATION, fill: 'forwards', easing: 'ease-out' });
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const particle = document.createElement('span');
+            particle.className = 'life-loss-particle';
+            particle.textContent = '◆';
+            particle.style.fontSize = `${PARTICLE_SIZE}px`;
+            heart.append(particle);
+            const angle = i * Math.PI * 2 / PARTICLE_COUNT;
+            const x = Math.cos(angle) * PARTICLE_DISTANCE;
+            const y = Math.sin(angle) * PARTICLE_DISTANCE;
+            particle.animate([
+                { transform: 'translate(-50%, -50%) scale(.2)', opacity: 0 },
+                { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: .22 },
+                { transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(180deg) scale(.3)`, opacity: 0 }
+            ], { duration: DURATION, fill: 'forwards', easing: 'ease-out' });
+        }
+        setTimeout(() => {
+            if (el.isConnected && el.contains(heart)) el.textContent = targetText;
+        }, DURATION);
+        return true;
+    }
     isFinalQuestion() { return false; }
     advance() {
         if (state.correct >= this.targetCorrect) { this.showClear(); return; }
