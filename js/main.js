@@ -1,7 +1,7 @@
 
 // Phase 11: answer feedback timing and screen transitions.
 
-const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/main/questions/';
+const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/refs/heads/main/questions/';
 
 const gameExtension = globalThis.QuizGameExtension ?? {};
 
