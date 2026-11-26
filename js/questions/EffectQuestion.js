@@ -238,7 +238,7 @@ function createSlidingPuzzleEffect({ ctx, W, H, hint, letters }) {
     ps.strokeText(hint, puzzleW / 2, puzzleH / 2, 520);
     ps.fillText(hint, puzzleW / 2, puzzleH / 2, 520);
 
-    const durationFor = i => i < 151 ? .03 : i < 276 ? .055 : i < 286 ? .11 : i < 297 ? 0.22 : 0.5
+    const durationFor = i => i < 151 ? .03 : i < 261 ? .055 : i < 286 ? .11 : i < 297 ? 0.22 : 0.5
 
     let moveIndex = 0;
     let moveStart = 0;
@@ -458,13 +458,13 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
     const SHATTER_FLASH_COLOR = '#DDEEFF';
 
     const SHARDS_ENABLED = true;
-    const SHARD_COUNT = 18;
+    const SHARD_COUNT = 48;
     const SHARD_MIN_SIZE = 4;
     const SHARD_MAX_SIZE = 16;
     const SHARD_MIN_SPEED = 100;
-    const SHARD_MAX_SPEED = 380;
+    const SHARD_MAX_SPEED = 500;
     const SHARD_LIFETIME = 0.8;
-    const SHARD_GRAVITY = 220;
+    const SHARD_GRAVITY = 980;
     const SHARD_ROTATION_SPEED = 10;
     const SHARD_ZOOM = 1.7;
     const SHARD_UPWARD_SPEED = 45;
