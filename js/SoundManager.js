@@ -14,6 +14,23 @@ class SoundManager {
 
     static bgm = null;
     static bgmGain = null;
+    static masterGain = null;
+    static fallbackSounds = new Set();
+
+    static clampVolume(v) {
+        return Math.max(0, Math.min(1, Number(v) || 0));
+    }
+
+    static setMasterVolume(v) {
+        if (this.masterGain) this.masterGain.gain.value = this.clampVolume(v);
+        this.setSeVolume(state.seVolume);
+    }
+
+    static setSeVolume(v) {
+        for (const audio of this.fallbackSounds) {
+            audio.volume = this.clampVolume(v) * this.clampVolume(state.masterVolume);
+        }
+    }
     static currentBgmMode = null;
 
     static bgmRequestId = 0;
@@ -91,6 +108,12 @@ class SoundManager {
 
             this.audioContext =
                 new AudioContextClass();
+        }
+
+        if (!this.masterGain) {
+            this.masterGain = this.audioContext.createGain();
+            this.masterGain.gain.value = this.clampVolume(state.masterVolume);
+            this.masterGain.connect(this.audioContext.destination);
         }
 
         this.unlocked = true;
@@ -395,7 +418,7 @@ class SoundManager {
         );
 
         source.connect(gain);
-        gain.connect(context.destination);
+        gain.connect(this.masterGain);
 
         this.bgm = source;
         this.bgmGain = gain;
@@ -456,8 +479,12 @@ class SoundManager {
                 'assets/sounds/se/' + name + '.wav'
             );
 
-            audio.volume = state.seVolume;
-            audio.play().catch(() => { });
+            audio.volume = this.clampVolume(state.seVolume) * this.clampVolume(state.masterVolume);
+            this.fallbackSounds.add(audio);
+            const cleanup = () => this.fallbackSounds.delete(audio);
+            audio.addEventListener("ended", cleanup, { once: true });
+            audio.addEventListener("error", cleanup, { once: true });
+            audio.play().catch(cleanup);
 
             return;
         }
@@ -482,7 +509,7 @@ class SoundManager {
         );
 
         source.connect(gain);
-        gain.connect(context.destination);
+        gain.connect(this.masterGain);
 
         source.onended = () => {
             source.disconnect();

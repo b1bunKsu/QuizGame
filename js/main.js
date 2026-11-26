@@ -12,15 +12,7 @@ const stage = document.querySelector('#stage');
 // ランク共通設定
 // ============================================================
 
-const RANK_THRESHOLDS = [
-  { rank: 'D', minScore: 0 },
-  { rank: 'C', minScore: 1000 },
-  { rank: 'B', minScore: 2000 },
-  { rank: 'A', minScore: 3000 },
-  { rank: 'S', minScore: 3500 },
-  { rank: 'SS', minScore: 4000 },
-  { rank: 'SSS', minScore: 4500 }
-];
+
 
 const state = {
   name: 'PLAYER',
@@ -41,22 +33,27 @@ const state = {
   streak: 0,
   questionPool: [],
   qwerty: false,
+  masterVolume: 1,
   bgmVolume: 0.5,
   seVolume: 0.5,
   lastCountdownSecond: null,
   inputEnabled: false
 };
 
-const MODE_BACKGROUNDS = {
-  STANDARD: 'assets/images/background.jpg',
-  HIGH_SPEED: 'assets/images/high_speed.jpg',
-  HUNDRED_CHALLENGE: 'assets/images/hundred.jpg'
-};
+const timerManager = new TimerManager(state, {
+  onUpdate: (remaining, limit) => new QuestionView(app).updateTimer(remaining, limit),
+  onCountdown: () => SoundManager.playSe('countdown'),
+  onTimeout: () => answer(null)
+});
+
+// 既存モードクラスとの互換用
+function rank(score) { return ScoreManager.rank(score); }
+function rankDisplayName(score) { return ScoreManager.rankDisplayName(score); }
+function nextRankTarget(score) { return ScoreManager.nextRankTarget(score); }
+function animateScore(el, from, to) { ScoreManager.animateScore(state, el, from, to); }
 
 function updateModeBackground() {
-  const background =
-    MODE_BACKGROUNDS[state.mode] ||
-    'assets/images/background.png';
+  const background = GameModeManager.current.background;
 
   document.documentElement.style.setProperty(
     '--game-background',
@@ -177,14 +174,6 @@ const FILES = [
   'image_touch.json'
 ];
 
-const HIGHSPEED_TYPES = new Set([
-  'OX',
-  'CHOICE',
-  'ONE_WAY',
-  'RENSOU',
-  'IMAGE_TOUCH',
-  'MULTIPLE_CHOICE'
-]);
 
 function readSettings() {
   try {
@@ -193,6 +182,8 @@ function readSettings() {
     );
 
     state.qwerty = Boolean(x.qwerty);
+    state.masterVolume = Number.isFinite(x.masterVolume)
+      ? Math.max(0, Math.min(1, x.masterVolume)) : 1;
     state.bgmVolume = Number.isFinite(x.bgmVolume)
       ? x.bgmVolume
       : 0.5;
@@ -211,6 +202,7 @@ function saveSettings() {
       'quizgame_web_settings',
       JSON.stringify({
         qwerty: state.qwerty,
+        masterVolume: state.masterVolume,
         bgmVolume: state.bgmVolume,
         seVolume: state.seVolume
       })
@@ -249,48 +241,13 @@ function title(message = '') {
     state.typingKeyHandler = null;
   }
 
-  app.innerHTML = `
-    <div class="center title-screen screen-enter">
-      <div class="title">ノンジャンル検定</div>
-      <div class="subtitle">ジャンルを問わず様々な問題が出題されるクイズゲームです</div>
-
-      <input
-        id="name"
-        class="name"
-        maxlength="8"
-        placeholder="名前を入力"
-        value="${esc(state.name === 'PLAYER' ? '' : state.name)}"
-      >
-
-      <div class="btns mode-buttons">
-        ${button('スタンダード', 'standard')}
-        ${button('ハイスピード', 'highspeed')}
-        ${button('100問チャレンジ', 'hundred')}
-      </div>
-      
-      ${button('設定', 'settings', 'settings-button')}
-
-      <!-- 自己ベスト表示 -->
-      <div class="title-best-score">
-        <span class="title-best-label">スタンダードのベストスコア</span>
-      </div>
-      <div class="title-best-score">
-        <span class="title-best-value">${bestScore}</span>
-      </div>
-
-      ${message ? `<div id="message">${esc(message)}</div>` : ''}
-    </div>
-  `;
-
+  const view = new TitleView(app, button, esc);
+  view.render({ name: state.name, bestScore, message });
   gameExtension.onTitle?.();
-
-  bind({
-    standard: () => startFromTitle('STANDARD'),
-    highspeed: () => startFromTitle('HIGH_SPEED'),
-    hundred: () => startFromTitle('HUNDRED_CHALLENGE'),
-
-    settings: () => {
-      state.name = document.querySelector('#name').value.trim() || 'PLAYER';
+  view.bind({
+    onStart: startFromTitle,
+    onSettings: name => {
+      state.name = name;
       settings();
     }
   });
@@ -300,11 +257,7 @@ function title(message = '') {
 const QUIZ_INTRO_DURATION = 3000;
 const QUIZ_WHITE_FADE_DURATION = 1000;
 
-const QUIZ_MODE_NAMES = {
-  STANDARD: 'スタンダード',
-  HIGH_SPEED: 'ハイスピード',
-  HUNDRED_CHALLENGE: '100問チャレンジ'
-};
+
 
 
 
@@ -378,7 +331,7 @@ async function startFromTitle(mode) {
 
 
 function showQuizIntro(mode) {
-  const modeName = QUIZ_MODE_NAMES[mode] || mode;
+  const modeName = GameModeManager.get(mode).name;
 
   app.innerHTML = `
         <div class="quiz-intro-screen">
@@ -397,85 +350,32 @@ function showQuizIntro(mode) {
 
 function settings() {
   clearTimer();
-
-  app.innerHTML = `
-    <div class="center settings-screen screen-enter">
-      <div class="settings-title">設定</div>
-
-      <label class="settings-label" for="bgm-volume">
-        BGM音量
-        <output id="bgm-value">${Math.round(state.bgmVolume * 100)}%</output>
-      </label>
-
-      <input
-        id="bgm-volume"
-        type="range"
-        min="0"
-        max="100"
-        value="${Math.round(state.bgmVolume * 100)}"
-      >
-
-      <label class="settings-label" for="se-volume">
-        SE音量
-        <output id="se-value">${Math.round(state.seVolume * 100)}%</output>
-      </label>
-
-      <input
-        id="se-volume"
-        type="range"
-        min="0"
-        max="100"
-        value="${Math.round(state.seVolume * 100)}"
-      >
-
-      <label class="settings-check">
-        <input
-          id="qwerty"
-          type="checkbox"
-          ${state.qwerty ? 'checked' : ''}
-        >
-        英数字キーボードをQWERTY配列にする
-      </label>
-
-      ${button('戻る', 'back', 'settings-button')}
-
-    </div>
-  `;
-
-  app.querySelector('#bgm-volume').addEventListener('input', e => {
-    state.bgmVolume = Number(e.target.value) / 100;
-    SoundManager.setBgmVolume(state.bgmVolume);
-    app.querySelector('#bgm-value').textContent = e.target.value + '%';
-    saveSettings();
-  });
-
-  app.querySelector('#se-volume').addEventListener('input', e => {
-    state.seVolume = Number(e.target.value) / 100;
-    app.querySelector('#se-value').textContent = e.target.value + '%';
-    saveSettings();
-  });
-
-  app.querySelector('#qwerty').addEventListener('change', e => {
-    state.qwerty = e.target.checked;
-    saveSettings();
-  });
-
-  bind({
-    back: () => title()
+  new SettingsView(app, button).render(state, {
+    onMaster: value => {
+      state.masterVolume = value;
+      SoundManager.setMasterVolume(value);
+      saveSettings();
+    },
+    onBgm: value => {
+      state.bgmVolume = value;
+      SoundManager.setBgmVolume(value);
+      saveSettings();
+    },
+    onSe: value => {
+      state.seVolume = value;
+      SoundManager.setSeVolume(value);
+      saveSettings();
+    },
+    onQwerty: value => {
+      state.qwerty = value;
+      saveSettings();
+    },
+    onBack: () => title()
   });
 }
 
 function loading() {
-  app.innerHTML = `
-    <div class="center">
-      <div class="title" style="font-size:50px">
-        問題を読み込み中…
-      </div>
-      <div class="note">
-        GitHubから問題を取得しています。
-      </div>
-    </div>
-  `;
+  new LoadingView(app).renderQuestions();
 }
 
 // ============================================================
@@ -624,15 +524,7 @@ async function loadAndStart(fromIntro = false) {
       state.questions = custom.questions;
       state.index = custom.index;
     } else {
-      const filtered = state.mode === 'HIGH_SPEED'
-        ? supported.filter(q => HIGHSPEED_TYPES.has(q.type)) : supported;
-      if (!filtered.length) throw Error('対応形式の問題がありません');
-      shuffle(filtered);
-      const count = state.mode === 'HIGH_SPEED' ? 15
-        : state.mode === 'HUNDRED_CHALLENGE' ? filtered.length : 25;
-      state.questionPool = filtered;
-      state.questions = filtered.slice(0, count);
-      state.index = 0;
+      GameModeManager.current.prepareQuestions(supported);
     }
 
     // ========================================
@@ -642,8 +534,7 @@ async function loadAndStart(fromIntro = false) {
     state.score = 0;
     state.correct = 0;
     state.history = [];
-    state.lives = 5;
-    state.streak = 0;
+    GameModeManager.current.reset();
 
     // ========================================
     // イントロ画面の表示時間を確保
@@ -724,10 +615,7 @@ function clearTimer() {
     state.visualCleanup = null;
   }
 
-  if (state.timer !== null) {
-    clearInterval(state.timer);
-    state.timer = null;
-  }
+  timerManager.stop();
 
   if (state.advanceTimer !== null) {
     clearTimeout(state.advanceTimer);
@@ -741,34 +629,7 @@ function clearTimer() {
   }
 }
 
-function nextRankTarget(score) {
 
-  // 次のランクの必要点数を取得
-  const nextRank = RANK_THRESHOLDS.find(
-    item => score < item.minScore
-  );
-
-  if (nextRank) {
-    return nextRank.minScore;
-  }
-
-  // 最高ランク到達後は自己ベストを表示
-  let bestScore = 0;
-
-  try {
-
-    bestScore = Number(
-      localStorage.getItem('quizgame_web_best_STANDARD')
-    ) || 0;
-
-  } catch (e) {
-
-    console.warn(e);
-
-  }
-
-  return bestScore > 0 ? bestScore : 'BEST';
-}
 
 function progressMarkup() {
   return Array.from(
@@ -818,29 +679,7 @@ function hideQuestionText() {
     state.questionWipeCleanup = null;
   }
 
-  // ========================================
-  // 通常の問題文を非表示
-  // ========================================
-
-  const question = app.querySelector(
-    '.quiz-shell .question-center .question'
-  );
-
-  if (question) {
-    question.style.visibility = 'hidden';
-  }
-
-  // ========================================
-  // 連想クイズのヒントを非表示
-  // ========================================
-
-  const rensouHints = app.querySelector(
-    '.quiz-shell .rensou-java-hints'
-  );
-
-  if (rensouHints) {
-    rensouHints.style.visibility = 'hidden';
-  }
+  new QuestionView(app).hideText();
 }
 
 
@@ -850,7 +689,7 @@ function hideQuestionText() {
 
 function startQuestionWipe() {
 
-  const wipeSpeed = state.mode === 'HIGH_SPEED' ? 3 : 1;
+  const wipeSpeed = GameModeManager.current.wipeSpeed;
 
   const question = app.querySelector(
     '.quiz-shell .question-center .question'
@@ -1207,62 +1046,17 @@ function startQuestionWipe() {
   run().catch(console.error);
 }
 
-// 全国正解率：取得済みの値を解答時に固定して表示する
-const NATIONAL_RATE_API = 'https://b1bunksu-quizgame.netlify.app/.netlify/functions/correct-rate';
-let nationalRateRequestSequence = 0;
-let nationalRateSnapshot = null;
+const correctRateManager = new CorrectRateManager();
 
-const NATIONAL_RANKING_API =
-  'https://b1bunksu-quizgame.netlify.app/.netlify/functions/ranking';
-
-function nationalRateKey(q) {
-  const type = String(q?.type ?? '');
-  const id = String(q?.id ?? '');
-  return /^[A-Z][A-Z0-9_-]{0,39}$/.test(type) && /^[1-9]\d{0,11}$/.test(id)
-    ? { type, id } : null;
-}
-
-async function loadNationalRate(q) {
-  const seq = ++nationalRateRequestSequence;
-  nationalRateSnapshot = null;
-  const key = nationalRateKey(q);
-  if (!key) return;
-  try {
-    const query = new URLSearchParams(key);
-    const response = await fetch(`${NATIONAL_RATE_API}?${query}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (seq === nationalRateRequestSequence && !state.locked && data.success) {
-      nationalRateSnapshot = Number.isInteger(data.rate) ? data.rate : null;
-    }
-  } catch (error) {
-    console.warn('全国正解率の取得に失敗:', error);
-  }
+function loadNationalRate(q) {
+  return correctRateManager.load(q, () => state.locked);
 }
 
 function finalizeNationalRate(q, correct, timeout) {
-  // 先にスナップショットを確定。送信後の集計結果は画面に反映しない。
-  const frozenRate = nationalRateSnapshot;
-  ++nationalRateRequestSequence;
-  const label = app.querySelector('#national-rate');
-  if (label) {
-    const rateValue = label.querySelector('.national-rate-value');
-    if (rateValue) rateValue.textContent = frozenRate === null ? '-' : String(frozenRate);
-  }
-  if (gameExtension.isPractice?.()) return;
-  const key = nationalRateKey(q);
-  if (!key) return;
-  const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  fetch(NATIONAL_RATE_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...key, correct: Boolean(correct), timeout: Boolean(timeout), requestId }),
-    keepalive: true
-  }).then(response => {
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  }).catch(error => console.warn('全国正解率の送信に失敗:', error));
+  const frozenRate = correctRateManager.freeze();
+  const rateValue = app.querySelector('#national-rate')?.querySelector('.national-rate-value');
+  if (rateValue) rateValue.textContent = frozenRate === null ? '-' : String(frozenRate);
+  if (!gameExtension.isPractice?.()) correctRateManager.submit(q, correct, timeout);
 }
 
 function showQuestion() {
@@ -1273,8 +1067,7 @@ function showQuestion() {
 
   if (
     !gameExtension.isPractice?.() &&
-    state.mode !== 'HUNDRED_CHALLENGE' &&
-    state.index === state.questions.length - 1
+    GameModeManager.current.isFinalQuestion()
   ) {
     SoundManager.playSe('final');
   }
@@ -1304,130 +1097,21 @@ function showQuestion() {
 
   void loadNationalRate(q);
 
-  const names = {
-    OX: 'OXクイズ',
-    CHOICE: '四択クイズ',
-    MULTIPLE_CHOICE: '一問多答クイズ',
-    ONE_WAY: '一方通行クイズ',
-    NUMBER: 'タイピングクイズ',
-    KANA: 'タイピングクイズ',
-    KATAKANA: 'タイピングクイズ',
-    CHARACTER_PANEL: '文字パネルクイズ',
-    SLOT: 'スロットクイズ',
-    GROUP: 'グループ分けクイズ',
-    ORDER: '順番当てクイズ',
-    'ORDER-A': '順番当てクイズ',
-    REARRANGEMENT: '並べ替えクイズ',
-    LINE_MATCHING: '線結びクイズ',
-    RENSOU: '連想クイズ',
-    EFFECT: 'エフェクトクイズ',
-    POLYHEDRON: 'キューブクイズ',
-    IMAGE_TOUCH: '画像タッチクイズ'
-  };
+  const limit = GameModeManager.current.timeLimit;
 
-  const limit = state.mode === 'HIGH_SPEED' ? 5 : 20;
+  timerManager.reset(limit);
 
-  state.remaining = limit;
-  state.timeLimit = limit;
-  state.lastCountdownSecond = null;
-
-  app.innerHTML = `
-    <div class="quiz-shell screen-enter options-concealed">
-      <header class="quiz-header">
-
-              <button
-          id="quit-button"
-          class="quit-button"
-          type="button"
-        >
-          中断
-        </button>
-
-        <div class="hud-panel rank-panel-web">
-          <div class="hud-caption" id="rank-name">
-            ${gameExtension.rankCaption?.() ?? (state.mode === 'HUNDRED_CHALLENGE'
-      ? 'ライフ'
-      :
-      rankDisplayName(state.score))
-
-    }
-          </div>
-
-          <div class="hud-number ${state.mode === 'HUNDRED_CHALLENGE' ? 'life-hearts' : ''}" id="rank-target">
-            ${gameExtension.rankTarget?.(q, true) ?? (state.mode === 'HUNDRED_CHALLENGE'
-      ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-      : nextRankTarget(state.score))
-    }
-          </div>
-        </div>
-
-        <div class="quiz-heading">
-          <div class="question-count">
-            ${state.mode === 'HUNDRED_CHALLENGE'
-      ? `第 ${state.index + 1} 問`
-      : state.index === state.questions.length - 1
-        ? '最終問題'
-        : `第 ${state.index + 1} 問`
-    }
-          </div>
-
-          <div class="qtype">
-            ${names[q.type] || esc(q.type)}
-          </div>
-          <div class="national-rate" id="national-rate"><span>正解率</span><span class="national-rate-value">？</span><span>%</span></div>
-        </div>
-
-        <div class="hud-panel player-panel-web">
-          <div class="hud-caption">
-            ${gameExtension.playerCaption?.() ?? (state.mode === 'HUNDRED_CHALLENGE'
-      ? '正解数'
-      : esc(state.name))
-    }
-          </div>
-
-          <div class="hud-number" id="player-score">
-            ${state.mode === 'HUNDRED_CHALLENGE'
-      ? state.correct + '問'
-      : state.score
-    }
-          </div>
-        </div>
-
-      </header>
-
-      <section class="question-center">
-        <div class="board">
-          <div class="question question-wipe-container"></div>
-        </div>
-
-        <div class="timer-area-web">
-          <span id="clock">${limit.toFixed(2)}</span>
-          <div class="bar">
-            <div class="fill" id="fill"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="answer-bottom">
-
-        ${!gameExtension.isPractice?.() &&
-      state.mode !== 'HUNDRED_CHALLENGE'
-      ? `
-              <div class="progress-web" id="progress-web">
-                ${progressMarkup()}
-              </div>
-            `
-      : ''
-    }
-
-        <div id="question-ui"></div>
-
-      </section>
-
-      <div class="feedback" id="feedback" role="status"></div>
-
-    </div>
-  `;
+  const view = new QuestionView(app);
+  view.render({
+    type: q.type, limit,
+    rankCaption: gameExtension.rankCaption?.() ?? GameModeManager.current.rankCaption(),
+    rankClass: GameModeManager.current.rankClass,
+    rankTarget: gameExtension.rankTarget?.(q, true) ?? GameModeManager.current.rankTarget(),
+    questionCaption: GameModeManager.current.questionCaption(),
+    playerCaption: gameExtension.playerCaption?.() ?? GameModeManager.current.playerCaption(),
+    playerScore: GameModeManager.current.playerScore(),
+    progress: !gameExtension.isPractice?.() && GameModeManager.current.showProgress ? progressMarkup() : null
+  });
 
   const ui = app.querySelector('#question-ui');
   const questionInstance = QuestionManager.create(q, ui);
@@ -1497,9 +1181,7 @@ function showQuestion() {
     // ========================================
 
     if (!gameExtension.overrideTimer?.()) {
-      state.deadline = performance.now() + limit * 1000;
-      state.timer = setInterval(tick, 30);
-      tick();
+      timerManager.start(limit);
     }
   };
 
@@ -1589,98 +1271,18 @@ function quitGame() {
   }
 
   // 全国正解率の取得結果を無効化
-  ++nationalRateRequestSequence;
-  nationalRateSnapshot = null;
+  correctRateManager.reset();
 
   // リザルト画面へ
   result(true);
 }
 
-function tick() {
-  if (state.locked) return;
-
-  state.remaining = Math.max(
-    0,
-    (state.deadline - performance.now()) / 1000
-  );
-
-  const clock = document.querySelector('#clock');
-  const fill = document.querySelector('#fill');
-
-  if (clock) {
-    clock.textContent = state.remaining.toFixed(2);
-  }
-
-  if (fill) {
-    fill.style.width =
-      (state.remaining / state.timeLimit * 100) + '%';
 
 
-    fill.classList.toggle(
-      'timer-yellow',
-      state.remaining < 17.00 &&
-      state.remaining >= 5
-    );
-
-    fill.classList.toggle(
-      'timer-red',
-      state.remaining < 5
-    );
-
-  }
-
-  // ========================================
-  // 残り5秒からカウントダウンSE
-  // ========================================
-
-  if (state.remaining > 0 && state.remaining <= 5) {
-
-    const countdownSecond = Math.ceil(state.remaining);
-
-    if (state.lastCountdownSecond !== countdownSecond) {
-
-      state.lastCountdownSecond = countdownSecond;
-
-      SoundManager.playSe('countdown');
-    }
-  }
-
-  // ========================================
-  // 時間切れ
-  // ========================================
-
-  if (state.remaining <= 0) {
-    answer(null);
-  }
-}
 
 
-function multiplier(d) {
-  return ({
-    EASY: 1,
-    NORMAL: 1.1,
-    HARD: 1.2
-  })[String(d ?? '').toUpperCase()] ?? 1;
-}
 
-function points(q) {
-  const elapsed = state.timeLimit - state.remaining;
 
-  const rate = Math.max(
-    0,
-    Math.min(
-      1,
-      elapsed <= 3
-        ? 1
-        : .97 * (state.timeLimit - elapsed) /
-        Math.max(1, state.timeLimit - 3)
-    )
-  );
-
-  return Math.round(
-    200 * multiplier(q.difficulty) * rate
-  );
-}
 
 
 function disableQuestionButtons() {
@@ -1789,7 +1391,7 @@ function answer(value) {
 
   finalizeNationalRate(q, correct, value === null);
 
-  const earned = correct ? points(q) : 0;
+  const earned = correct ? ScoreManager.points(q, state.timeLimit, state.remaining) : 0;
 
   if (correct) {
     state.correct++;
@@ -1799,28 +1401,8 @@ function answer(value) {
     }
   }
 
-  // ライフ回復判定用フラグ
-  let lifeUp = false;
-
-  if (state.mode === 'HUNDRED_CHALLENGE') {
-    if (correct) {
-      state.streak++;
-
-      if (state.streak >= 7) {
-        state.streak = 0;
-
-        // ライフに空きがある場合のみ回復
-        if (state.lives < 5) {
-          state.lives++;
-          lifeUp = true;
-        }
-      }
-
-    } else {
-      state.streak = 0;
-      state.lives = Math.max(0, state.lives - 1);
-    }
-  }
+  const mode = GameModeManager.current;
+  const lifeUp = mode.onAnswer(correct);
 
   app.querySelectorAll('#question-ui button')
     .forEach(b => b.disabled = true);
@@ -1851,45 +1433,21 @@ function answer(value) {
 
     const scoreEl = document.querySelector('#player-score');
 
-    if (scoreEl) {
-
-      if (state.mode === 'HUNDRED_CHALLENGE') {
-
-        // 100問チャレンジ：正解数を即時更新
-        scoreEl.textContent = state.correct + '問';
-
-      } else {
-
-        // 通常モード：従来どおりスコア加算アニメーション
-        const displayed = Number(scoreEl.textContent) || 0;
-        const target = state.score;
-
-        animateScore(scoreEl, displayed, target);
-      }
-    }
-
+    if (scoreEl) mode.updateScore(scoreEl);
 
     const rankEl = document.querySelector('#rank-name');
 
     if (rankEl) {
-      rankEl.textContent = gameExtension.rankCaption?.() ?? (state.mode === 'HUNDRED_CHALLENGE'
-        ? 'ライフ'
-        :
-        rankDisplayName(state.score));
+      rankEl.textContent = gameExtension.rankCaption?.() ?? GameModeManager.current.rankCaption();
     }
 
     const targetEl = document.querySelector('#rank-target');
 
     if (targetEl) {
       targetEl.textContent = gameExtension.rankTarget?.(q, false) ??
-        (state.mode === 'HUNDRED_CHALLENGE'
-          ? '♥'.repeat(state.lives) + '♡'.repeat(5 - state.lives)
-          : nextRankTarget(state.score));
+        GameModeManager.current.rankTarget();
 
-      // ライフ回復SE
-      if (lifeUp) {
-        SoundManager.playSe('oneUp');
-      }
+      mode.onFeedback(lifeUp);
     }
 
     state.history.push({
@@ -1910,31 +1468,7 @@ function answer(value) {
 
     hideQuestionText();
 
-    if (feedback) {
-
-      feedback.textContent = value === null
-        ? '時間切れ'
-        : correct
-          ? '正解'
-          : '不正解';
-
-      feedback.classList.add(
-        'feedback-visible',
-        value === null
-          ? 'feedback-timeout'
-          : correct
-            ? 'feedback-correct'
-            : 'feedback-incorrect'
-      );
-    }
-
-    const board = document.querySelector('.quiz-shell .board');
-
-    if (board) {
-      board.classList.add(
-        correct ? 'board-correct' : 'board-incorrect'
-      );
-    }
+    new QuestionView(app).showFeedback(correct, value === null);
   };
 
   // ========================================
@@ -1969,221 +1503,31 @@ function answer(value) {
 
     state.index++;
 
-    // 100問チャレンジ
-    if (state.mode === 'HUNDRED_CHALLENGE') {
-
-      // ========================================
-      // 100問チャレンジ終了判定
-      // ========================================
-
-      // 100問正解達成
-      if (state.correct >= 100) {
-        showHundredClear();
-        return;
-      }
-
-      // ライフが0になった場合
-      if (state.lives <= 0) {
-        result();
-        return;
-      }
-
-      // 問題をすべて出題したら再シャッフルして補充
-      if (state.index >= state.questions.length) {
-        const nextBatch = [...state.questionPool];
-
-        shuffle(nextBatch);
-
-        // 直前と同じ問題が連続しないようにする
-        const previous = state.questions[state.index - 1];
-
-        if (nextBatch.length > 1) {
-          const first = nextBatch[0];
-
-          if (first === previous) {
-            [nextBatch[0], nextBatch[1]] =
-              [nextBatch[1], nextBatch[0]];
-          }
-        }
-
-        state.questions.push(...nextBatch);
-      }
-
-      showQuestion();
-      return;
-    }
-
-    // 通常モード・ハイスピードモード
-    showQuestion();
+    mode.advance();
 
 
   }, advanceDelay);
 }
 
 
-function animateScore(el, from, to) {
-  if (state.scoreAnimation !== null) {
-    cancelAnimationFrame(state.scoreAnimation);
-    state.scoreAnimation = null;
-  }
 
-  if (from === to) {
-    el.textContent = String(to);
-    return;
-  }
 
-  const start = performance.now();
-  const duration = 1000;
 
-  function frame(now) {
-    const t = Math.min(1, (now - start) / duration);
-    const ease = 1 - Math.pow(1 - t, 3);
 
-    el.textContent = String(
-      Math.round(from + (to - from) * ease)
-    );
 
-    if (t < 1) {
-      state.scoreAnimation = requestAnimationFrame(frame);
-    } else {
-      state.scoreAnimation = null;
-      el.textContent = String(to);
-    }
-  }
-
-  state.scoreAnimation = requestAnimationFrame(frame);
-}
-
-function rank(score) {
-
-  for (let i = RANK_THRESHOLDS.length - 1; i >= 0; i--) {
-
-    if (score >= RANK_THRESHOLDS[i].minScore) {
-      return RANK_THRESHOLDS[i].rank;
-    }
-  }
-
-  return RANK_THRESHOLDS[0].rank;
-}
-
-function rankDisplayName(score) {
-
-  const nextRank = RANK_THRESHOLDS.find(
-    item => score < item.minScore
-  );
-
-  return nextRank
-    ? nextRank.rank + 'ランク'
-    : '自己ベスト';
-}
 
 // ============================================================
 // 100問チャレンジ達成演出
 // ============================================================
 
-function showHundredClear() {
 
-  SoundManager.playSe("applause");
-
-  // タイマー停止
-  clearTimer();
-
-  // ========================================
-  // 「正解」の判定表示を消す
-  // ========================================
-
-  const feedback = app.querySelector('#feedback');
-
-  if (feedback) {
-
-    feedback.textContent = '';
-    feedback.className = 'feedback';
-    feedback.style.display = 'none';
-
-  }
-
-  // ========================================
-  // 問題板に達成メッセージを表示
-  // ========================================
-
-  const board = app.querySelector('.quiz-shell .board');
-
-  if (!board) {
-    result();
-    return;
-  }
-
-  board.innerHTML = `
-    <div class="hundred-clear-message">
-      100問正解達成!!
-    </div>
-  `;
-
-  // ========================================
-  // 解答UIを非表示
-  // ========================================
-
-  const questionUI = app.querySelector('#question-ui');
-
-  if (questionUI) {
-    questionUI.style.visibility = 'hidden';
-  }
-
-  // ========================================
-  // 3秒後にリザルト画面へ
-  // ========================================
-
-  setTimeout(() => {
-    result();
-  }, 3000);
-
-}
 
 // ========================================
 // プレイヤーIDの取得・生成
 // ========================================
 
-function getPlayerId() {
-  const key = 'quizgame_web_player_id';
-
-  let id = localStorage.getItem(key);
-
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-
-  return id;
-}
-
-// ========================================
-// 全国ランキングへのスコア送信
-// ========================================
-
-async function submitRanking(score, name) {
-  const response = await fetch(NATIONAL_RANKING_API, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      playerId: getPlayerId(),
-      name,
-      score
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`ランキング登録失敗: HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.success) {
-    throw new Error('ランキング登録に失敗しました');
-  }
-
-  return data;
+function submitRanking(score, name) {
+  return RankingManager.submit(score, name);
 }
 
 function result(abandoned = false) {
@@ -2191,93 +1535,17 @@ function result(abandoned = false) {
 
   clearTimer();
 
-  const challenge = state.mode === 'HUNDRED_CHALLENGE';
-  const highSpeed = state.mode === 'HIGH_SPEED';
-  const score = state.score;
+  const mode = GameModeManager.current;
+  const data = {
+    abandoned,
+    challenge: mode.isChallenge,
+    score: state.score,
+    resultRank: rank(state.score),
+    correctCount: state.correct
+  };
 
-  // ランク判定
-  const resultRank = rank(score);
-
-  // 自己ベストの取得
-  const key = 'quizgame_web_best_STANDARD';
-  let previousBest = 0;
-
-  try {
-    previousBest = Number(localStorage.getItem(key)) || 0;
-  } catch (e) {
-    console.warn(e);
-  }
-
-  // ========================================
-  // スタンダードモードの自己ベスト更新
-  // ========================================
-
-  if (state.mode === 'STANDARD' && !abandoned) {
-
-    if (score > previousBest) {
-      try {
-        localStorage.setItem(key, String(score));
-      } catch (e) {
-        console.warn(e);
-      }
-    }
-
-    // 全国ランキングへ送信
-    // 自己ベスト以外でも送信可能。
-    // サーバー側で最高記録のみ保存する。
-    submitRanking(score, state.name)
-      .then(data => {
-        console.log('全国ランキング登録結果:', data);
-      })
-      .catch(error => {
-        console.warn('全国ランキング登録失敗:', error);
-      });
-  }
-
-  // リザルト画面
-
-  app.innerHTML = `
-    <div class="result-simple screen-enter">
-
-        <div class="result-simple-title">RESULT</div>
-
-        <div class="result-simple-board">
-
-          ${abandoned ? `
-              <div class="result-simple-label">RESULT</div>
-              <div class="result-simple-rank">
-                  途中放棄
-              </div>
-          ` : challenge ? `
-              <div class="result-simple-label">正解数</div>
-              <div class="result-simple-rank">
-                  ${state.correct}問
-              </div>
-          ` : `
-              <div class="result-simple-label">RANK</div>
-              <div class="result-simple-rank">
-                  ${resultRank}
-              </div>
-          `}
-
-            <div class="result-simple-label">SCORE</div>
-            <div class="result-simple-score">
-                ${score}
-            </div>
-
-        </div>
-
-        <div class="result-simple-actions">
-            ${button('タイトル画面へ', 'title')}
-        </div>
-
-    </div>
-`;
-
-
-  bind({
-    title: () => title()
-  });
+  mode.onResult(abandoned);
+  new ResultView(app, button, () => title()).render(data);
 }
 
 
@@ -2294,48 +1562,13 @@ readSettings();
 // ============================================================
 
 const PRELOAD_IMAGES = [
-  ...new Set(Object.values(MODE_BACKGROUNDS))
+  ...new Set(Array.from(GameModeManager.modes.values(), mode => mode.background))
 ];
 
 
 // ============================================================
 // ロード画面表示
 // ============================================================
-function showStartupLoading() {
-
-  app.innerHTML = `
-    <div class="startup-loading">
-
-      <div class="startup-loading-status">
-        LOADING...
-      </div>
-
-      <div class="startup-loading-bar">
-        <div
-          class="startup-loading-progress"
-          id="load-progress"
-        ></div>
-      </div>
-
-      <div
-        class="startup-loading-percent"
-        id="load-percent"
-      >
-        0%
-      </div>
-
-      <div
-        class="startup-loading-detail"
-        id="load-detail"
-      >
-        読み込みを準備しています...
-      </div>
-
-    </div>
-  `;
-}
-
-
 // ============================================================
 // 画像プリロード
 // ============================================================
@@ -2384,11 +1617,8 @@ async function startup() {
   // ロード画面表示
   // ========================================
 
-  showStartupLoading();
-
-  const progress = document.querySelector('#load-progress');
-  const percent = document.querySelector('#load-percent');
-  const detail = document.querySelector('#load-detail');
+  const view = new LoadingView(app);
+  view.renderStartup();
 
 
   // ========================================
@@ -2468,8 +1698,7 @@ async function startup() {
       ? 100
       : Math.round(completed / total * 100);
 
-    progress.style.width = `${percentage}%`;
-    percent.textContent = `${percentage}%`;
+    view.updateProgress(percentage);
 
   }
 
@@ -2485,7 +1714,7 @@ async function startup() {
 
       // 現在読み込み中のファイル名を表示
       lastLoadingLabel = task.label;
-      detail.textContent = `${task.label} を読み込み中...`;
+      view.setDetail(`${task.label} を読み込み中...`);
 
       try {
 
@@ -2506,10 +1735,9 @@ async function startup() {
 
         // 進捗表示
         if (completed < total) {
-          detail.textContent =
-            `${task.label} の処理が完了しました`;
+          view.setDetail(`${task.label} の処理が完了しました`);
         } else {
-          detail.textContent = '読み込み完了！';
+          view.setDetail('読み込み完了！');
         }
 
       }
@@ -2543,7 +1771,7 @@ async function startup() {
   // 100%表示を描画
   // ========================================
 
-  progress.style.width = '100%';
+  view.finish();
 
   await new Promise(resolve => {
 
@@ -2618,12 +1846,6 @@ startup().catch(error => {
     error
   );
 
-  app.innerHTML = `
-    <div class="startup-loading">
-      <div class="startup-loading-status">
-        LOADING ERROR
-      </div>
-    </div>
-  `;
+  new LoadingView(app).renderError();
 
 });
