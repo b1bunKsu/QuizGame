@@ -72,43 +72,180 @@ function setupEffect(hint, host) {
     const puzzleX = (W - puzzleW) / 2;
     const puzzleY = (H - puzzleH) / 2;
 
-    const finalCell = 55 + Math.floor(Math.random() * 10);
-    const cellToTile = Array.from({ length: count }, (_, i) => i);
-    cellToTile[finalCell] = -1;
+    const blankRow = 1 + Math.floor(Math.random() * (rows - 2));
+    const blankCol = 1 + Math.floor(Math.random() * (cols - 2));
 
-    let blank = finalCell, previousBlank = -1;
-    const scrambleMoves = [];
+    const finalCell = blankRow * cols + blankCol;
+    // ========================================
+    // スライドパズルのシャッフル
+    // ========================================
 
-    for (let i = 0; i < 300; i++) {
-        const r = Math.floor(blank / cols);
-        const c = blank % cols;
-        const candidates = [];
+    const SHUFFLE_COUNT = 300;
+    const SHUFFLE_ATTEMPTS = 30;
 
-        if (r > 0 && blank - cols !== previousBlank) {
-            candidates.push(blank - cols);
-        }
-        if (r < rows - 1 && blank + cols !== previousBlank) {
-            candidates.push(blank + cols);
-        }
-        if (c > 0 && blank - 1 !== previousBlank) {
-            candidates.push(blank - 1);
-        }
-        if (c < cols - 1 && blank + 1 !== previousBlank) {
-            candidates.push(blank + 1);
-        }
-
-        const neighbor = candidates[Math.floor(Math.random() * candidates.length)];
-        const tile = cellToTile[neighbor];
-
-        cellToTile[blank] = tile;
-        cellToTile[neighbor] = -1;
-        scrambleMoves.push(tile);
-
-        previousBlank = blank;
-        blank = neighbor;
+    // マンハッタン距離
+    function distance(a, b) {
+        return Math.abs(a % cols - b % cols) +
+            Math.abs(
+                Math.floor(a / cols) -
+                Math.floor(b / cols)
+            );
     }
 
-    const reverseMoves = scrambleMoves.reverse();
+    function generateScramble() {
+
+        const cells = Array.from(
+            { length: count },
+            (_, i) => i
+        );
+
+        cells[finalCell] = -1;
+
+        const tileMoves = Array(count).fill(0);
+        const cellVisits = Array(count).fill(0);
+
+        const moves = [];
+
+        let empty = finalCell;
+        let previous = -1;
+
+        cellVisits[empty]++;
+
+        for (let i = 0; i < SHUFFLE_COUNT; i++) {
+
+            const r = Math.floor(empty / cols);
+            const c = empty % cols;
+
+            const candidates = [];
+
+            if (r > 0)
+                candidates.push(empty - cols);
+
+            if (r < rows - 1)
+                candidates.push(empty + cols);
+
+            if (c > 0)
+                candidates.push(empty - 1);
+
+            if (c < cols - 1)
+                candidates.push(empty + 1);
+
+            // 直前の移動を打ち消す動作は禁止
+            const neighbors = candidates.filter(
+                cell => cell !== previous
+            );
+
+            // 各移動候補の重みを計算
+            const weights = neighbors.map(cell => {
+
+                const tile = cells[cell];
+
+                const before = distance(tile, cell);
+                const after = distance(tile, empty);
+
+                // 元の位置から遠ざかる移動を優先
+                const distanceWeight =
+                    after > before ? 4.0 : 0.5;
+
+                // 移動回数が少ないタイルを優先
+                const tileWeight =
+                    1 / Math.sqrt(1 + tileMoves[tile]);
+
+                // 訪問回数が少ないマスを優先
+                const visitWeight =
+                    1 / Math.sqrt(1 + cellVisits[cell]);
+
+                return distanceWeight *
+                    tileWeight *
+                    visitWeight;
+            });
+
+            // 重み付きランダム抽選
+            const totalWeight = weights.reduce(
+                (sum, weight) => sum + weight,
+                0
+            );
+
+            let random = Math.random() * totalWeight;
+            let neighbor = neighbors[neighbors.length - 1];
+
+            for (let j = 0; j < neighbors.length; j++) {
+
+                random -= weights[j];
+
+                if (random <= 0) {
+                    neighbor = neighbors[j];
+                    break;
+                }
+            }
+
+            const tile = cells[neighbor];
+
+            // タイルを移動
+            cells[empty] = tile;
+            cells[neighbor] = -1;
+
+            moves.push(tile);
+
+            tileMoves[tile]++;
+            cellVisits[neighbor]++;
+
+            previous = empty;
+            empty = neighbor;
+        }
+
+        // ========================================
+        // シャッフル結果の評価
+        // ========================================
+
+        let score = 0;
+
+        for (let cell = 0; cell < count; cell++) {
+
+            const tile = cells[cell];
+
+            if (tile < 0) continue;
+
+            // 元の位置から離れているほど高評価
+            score += distance(tile, cell);
+
+            // 元の位置にないタイルを加点
+            if (tile !== cell) {
+                score += 3;
+            }
+        }
+
+        return {
+            cells,
+            empty,
+            moves,
+            score
+        };
+    }
+
+    // ========================================
+    // 最も混ざっている結果を採用
+    // ========================================
+
+    let bestScramble = null;
+
+    for (let i = 0; i < SHUFFLE_ATTEMPTS; i++) {
+
+        const result = generateScramble();
+
+        if (
+            bestScramble === null ||
+            result.score > bestScramble.score
+        ) {
+            bestScramble = result;
+        }
+    }
+
+    const cellToTile = bestScramble.cells;
+
+    let blank = bestScramble.empty;
+
+    const reverseMoves = bestScramble.moves.reverse();
     const tileToCell = Array(count).fill(-1);
 
     cellToTile.forEach((tile, cell) => {
@@ -133,7 +270,7 @@ function setupEffect(hint, host) {
     ps.strokeText(hint, puzzleW / 2, puzzleH / 2, 520);
     ps.fillText(hint, puzzleW / 2, puzzleH / 2, 520);
 
-    const durationFor = i => i < 195 ? .03 : i < 270 ? .07 : i < 291 ? .15 : .3;
+    const durationFor = i => i < 151 ? .03 : i < 276 ? .055 : i < 286 ? .11 : i < 297 ? 0.22 : 0.5
 
     let moveIndex = 0;
     let moveStart = 0;
