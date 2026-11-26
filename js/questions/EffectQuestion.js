@@ -480,18 +480,18 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
     const DECAY_POWER = 1.0;
 
     // ガラス片の分割
-    const COLS = 15;
-    const ROWS = 5;
+    const COLS = 21;
+    const ROWS = 7;
     const SITE_JITTER_X = 0.375;
     const SITE_JITTER_Y = 0.32;
 
     // 屈折による位置のずれ
-    const REFRACTION_X = 55;
-    const REFRACTION_Y = 55;
+    const REFRACTION_X = 20;
+    const REFRACTION_Y = 20;
 
     // 拡大・縮小
-    const MIN_ZOOM = 0.75;
-    const MAX_ZOOM = 3;
+    const MIN_ZOOM = 0.5;
+    const MAX_ZOOM = 2;
     const ZOOM_SPEED = 0.7;
 
     // 回転
@@ -510,8 +510,8 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
     const SHOW_OUTER_BOUNDARY = false;
     const EDGE_EPSILON = 0.0001;
     const BOUNDARY_COLOR = '#000000';
-    const BOUNDARY_WIDTH = 1.0;
-    const BOUNDARY_OPACITY = 0.9;
+    const BOUNDARY_WIDTH = 1;
+    const BOUNDARY_OPACITY = 0.25;
 
     // ひび割れのフェードアウト設定
     const BOUNDARY_FADE_START = 0;
