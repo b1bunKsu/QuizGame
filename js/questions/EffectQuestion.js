@@ -64,7 +64,7 @@ function setupEffect(hint, host) {
     const rotationOffsets = rotationPeriods.map(p => Math.random() * p);
     const scaleOffsets = scalePeriods.map(p => Math.random() * p * 2);
 
-    // Real 18x6 sliding puzzle: one empty cell, 300 legal neighbor swaps,
+    // Real 18x6 sliding puzzle: multiple empty cells, 300 parallel swap steps,
     // then replay the swaps backwards (as in the original JavaFX EffectView).
     const cols = 18, rows = 6, count = cols * rows;
     const puzzleW = 600, puzzleH = 180;
@@ -72,187 +72,71 @@ function setupEffect(hint, host) {
     const puzzleX = (W - puzzleW) / 2;
     const puzzleY = (H - puzzleH) / 2;
 
-    const blankRow = 1 + Math.floor(Math.random() * (rows - 2));
-    const blankCol = 1 + Math.floor(Math.random() * (cols - 2));
-
-    const finalCell = blankRow * cols + blankCol;
-    // ========================================
-    // スライドパズルのシャッフル
-    // ========================================
+    const RARE_RATE = 0.3;
+    const BLANK_COUNT = Math.random() < RARE_RATE ? 2 : 1;
 
     const SHUFFLE_COUNT = 300;
     const SHUFFLE_ATTEMPTS = 30;
-
-    // マンハッタン距離
-    function distance(a, b) {
-        return Math.abs(a % cols - b % cols) +
-            Math.abs(
-                Math.floor(a / cols) -
-                Math.floor(b / cols)
-            );
-    }
+    const pool = Array.from({ length: count }, (_, i) => i)
+        .filter(i => Math.floor(i / cols) > 0 && Math.floor(i / cols) < rows - 1 && i % cols > 0 && i % cols < cols - 1);
+    const finalCells = Array.from({ length: BLANK_COUNT }, () =>
+        pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    const missing = new Set(finalCells);
+    const distance = (a, b) => Math.abs(a % cols - b % cols) +
+        Math.abs(Math.floor(a / cols) - Math.floor(b / cols));
 
     function generateScramble() {
-
-        const cells = Array.from(
-            { length: count },
-            (_, i) => i
-        );
-
-        cells[finalCell] = -1;
-
+        const cells = Array.from({ length: count }, (_, i) => missing.has(i) ? -1 : i);
+        const blanks = [...finalCells];
+        const previous = blanks.map(() => -1);
+        const visits = Array(count).fill(0);
         const tileMoves = Array(count).fill(0);
-        const cellVisits = Array(count).fill(0);
-
         const moves = [];
-
-        let empty = finalCell;
-        let previous = -1;
-
-        cellVisits[empty]++;
-
-        for (let i = 0; i < SHUFFLE_COUNT; i++) {
-
-            const r = Math.floor(empty / cols);
-            const c = empty % cols;
-
-            const candidates = [];
-
-            if (r > 0)
-                candidates.push(empty - cols);
-
-            if (r < rows - 1)
-                candidates.push(empty + cols);
-
-            if (c > 0)
-                candidates.push(empty - 1);
-
-            if (c < cols - 1)
-                candidates.push(empty + 1);
-
-            // 直前の移動を打ち消す動作は禁止
-            const neighbors = candidates.filter(
-                cell => cell !== previous
-            );
-
-            // 各移動候補の重みを計算
-            const weights = neighbors.map(cell => {
-
-                const tile = cells[cell];
-
-                const before = distance(tile, cell);
-                const after = distance(tile, empty);
-
-                // 元の位置から遠ざかる移動を優先
-                const distanceWeight =
-                    after > before ? 4.0 : 0.5;
-
-                // 移動回数が少ないタイルを優先
-                const tileWeight =
-                    1 / Math.sqrt(1 + tileMoves[tile]);
-
-                // 訪問回数が少ないマスを優先
-                const visitWeight =
-                    1 / Math.sqrt(1 + cellVisits[cell]);
-
-                return distanceWeight *
-                    tileWeight *
-                    visitWeight;
-            });
-
-            // 重み付きランダム抽選
-            const totalWeight = weights.reduce(
-                (sum, weight) => sum + weight,
-                0
-            );
-
-            let random = Math.random() * totalWeight;
-            let neighbor = neighbors[neighbors.length - 1];
-
-            for (let j = 0; j < neighbors.length; j++) {
-
-                random -= weights[j];
-
-                if (random <= 0) {
-                    neighbor = neighbors[j];
-                    break;
+        for (const b of blanks) visits[b]++;
+        for (let step = 0; step < SHUFFLE_COUNT; step++) {
+            const batch = [];
+            const used = new Set();
+            // Backtrack if two blanks compete for the same source tile.
+            function choose(k) {
+                if (k === blanks.length) return true;
+                const to = blanks[k];
+                const candidates = [to - cols, to + cols, to - 1, to + 1].filter(from =>
+                    from >= 0 && from < count && distance(from, to) === 1 && cells[from] >= 0 && !used.has(from));
+                const ranked = candidates.map(from => {
+                    const tile = cells[from];
+                    const weight = (distance(tile, to) > distance(tile, from) ? 2.5 : 0.6) /
+                        Math.sqrt((1 + tileMoves[tile]) * (1 + visits[from])) * (from === previous[k] ? 0.05 : 1);
+                    return { from, key: -Math.log(Math.max(Number.MIN_VALUE, Math.random())) / weight };
+                }).sort((a, b) => a.key - b.key);
+                for (const { from } of ranked) {
+                    used.add(from);
+                    batch.push({ tile: cells[from], from, to });
+                    if (choose(k + 1)) return true;
+                    batch.pop(); used.delete(from);
                 }
+                return false;
             }
-
-            const tile = cells[neighbor];
-
-            // タイルを移動
-            cells[empty] = tile;
-            cells[neighbor] = -1;
-
-            moves.push(tile);
-
-            tileMoves[tile]++;
-            cellVisits[neighbor]++;
-
-            previous = empty;
-            empty = neighbor;
+            if (!choose(0)) return null;
+            batch.forEach(({ tile, from, to }, k) => {
+                cells[to] = tile; cells[from] = -1;
+                previous[k] = to; blanks[k] = from;
+                tileMoves[tile]++; visits[from]++;
+            });
+            moves.push(batch);
         }
-
-        // ========================================
-        // シャッフル結果の評価
-        // ========================================
-
-        let score = 0;
-
-        for (let cell = 0; cell < count; cell++) {
-
-            const tile = cells[cell];
-
-            if (tile < 0) continue;
-
-            // 元の位置から離れているほど高評価
-            score += distance(tile, cell);
-
-            // 元の位置にないタイルを加点
-            if (tile !== cell) {
-                score += 3;
-            }
-        }
-
-        return {
-            cells,
-            empty,
-            moves,
-            score
-        };
+        const score = cells.reduce((sum, tile, cell) => sum + (tile < 0 ? 0 : distance(tile, cell) + (tile !== cell ? 3 : 0)), 0);
+        return { cells, moves, score };
     }
-
-    // ========================================
-    // 最も混ざっている結果を採用
-    // ========================================
-
-    let bestScramble = null;
-
+    let best = null;
     for (let i = 0; i < SHUFFLE_ATTEMPTS; i++) {
-
         const result = generateScramble();
-
-        if (
-            bestScramble === null ||
-            result.score > bestScramble.score
-        ) {
-            bestScramble = result;
-        }
+        if (result && (!best || result.score > best.score)) best = result;
     }
-
-    const cellToTile = bestScramble.cells;
-
-    let blank = bestScramble.empty;
-
-    const reverseMoves = bestScramble.moves.reverse();
+    if (!best) throw new Error('Unable to generate sliding puzzle');
+    const cellToTile = best.cells;
+    const reverseMoves = best.moves.reverse().map(batch => batch.map(({ tile, from, to }) => ({ tile, from: to, to: from })));
     const tileToCell = Array(count).fill(-1);
-
-    cellToTile.forEach((tile, cell) => {
-        if (tile >= 0) {
-            tileToCell[tile] = cell;
-        }
-    });
+    cellToTile.forEach((tile, cell) => { if (tile >= 0) tileToCell[tile] = cell; });
 
     const puzzleSource = document.createElement('canvas');
     puzzleSource.width = puzzleW;
@@ -290,14 +174,11 @@ function setupEffect(hint, host) {
                 break;
             }
 
-            const tile = reverseMoves[moveIndex];
-            const from = tileToCell[tile];
-            const to = blank;
-
-            cellToTile[to] = tile;
-            cellToTile[from] = -1;
-            tileToCell[tile] = to;
-            blank = from;
+            for (const { tile, from, to } of reverseMoves[moveIndex]) {
+                cellToTile[from] = -1;
+                cellToTile[to] = tile;
+                tileToCell[tile] = to;
+            }
 
             moveStart += duration;
             moveIndex++;
@@ -306,21 +187,17 @@ function setupEffect(hint, host) {
         activeMove = null;
 
         if (moveIndex < reverseMoves.length) {
-            const tile = reverseMoves[moveIndex];
-
-            activeMove = {
-                tile,
-                from: tileToCell[tile],
-                to: blank,
+            activeMove = reverseMoves[moveIndex].map(move => ({
+                ...move,
                 progress: Math.min(1, (t - moveStart) / durationFor(moveIndex))
-            };
+            }));
         } else if (completedAt === null) {
             completedAt = t;
         }
 
         // Source is an intact text image split into fixed tiles; only adjacent tiles move.
         for (let tile = 0; tile < count; tile++) {
-            if (tile === finalCell) {
+            if (missing.has(tile)) {
                 continue;
             }
 
@@ -328,12 +205,13 @@ function setupEffect(hint, host) {
             let x = (cell % cols) * tw;
             let y = Math.floor(cell / cols) * th;
 
-            if (activeMove && activeMove.tile === tile) {
-                const f = activeMove.from;
-                const d = activeMove.to;
+            const moving = activeMove?.find(move => move.tile === tile);
+            if (moving) {
+                const f = moving.from;
+                const d = moving.to;
 
-                const u = activeMove.progress * activeMove.progress *
-                    (3 - 2 * activeMove.progress);
+                const u = moving.progress * moving.progress *
+                    (3 - 2 * moving.progress);
 
                 x = ((f % cols) + ((d % cols) - (f % cols)) * u) * tw;
                 y = (Math.floor(f / cols) +
@@ -355,15 +233,18 @@ function setupEffect(hint, host) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, (t - completedAt) / .5);
 
-            ctx.drawImage(
-                puzzleSource,
-                (finalCell % cols) * tw,
-                Math.floor(finalCell / cols) * th,
-                tw, th,
-                puzzleX + (finalCell % cols) * tw,
-                puzzleY + Math.floor(finalCell / cols) * th,
-                tw, th
-            );
+            for (const finalCell of finalCells) {
+                ctx.drawImage(
+                    puzzleSource,
+                    (finalCell % cols) * tw,
+                    Math.floor(finalCell / cols) * th,
+                    tw, th,
+                    puzzleX + (finalCell % cols) * tw,
+                    puzzleY + Math.floor(finalCell / cols) * th,
+                    tw, th
+                );
+
+            }
 
             ctx.restore();
         }
