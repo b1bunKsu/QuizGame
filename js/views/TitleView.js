@@ -7,7 +7,7 @@ class TitleView {
   }
 
   render({ name, bestScore, message }) {
-  this.container.innerHTML = `
+    this.container.innerHTML = `
     <div class="center title-screen screen-enter">
       <div class="title">ノンジャンル検定</div>
       <div class="subtitle">ジャンルを問わず様々な問題が出題されるクイズゲームです</div>
