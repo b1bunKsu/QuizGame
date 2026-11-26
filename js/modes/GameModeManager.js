@@ -1,6 +1,7 @@
 class GameModeManager {
   static modes = new Map([
     ['STANDARD', new StandardMode()],
+    ['TUTORIAL', new TutorialMode()],
     ['HIGH_SPEED', new HighSpeedMode()],
     ['HUNDRED_CHALLENGE', new HundredChallengeMode()]
   ]);

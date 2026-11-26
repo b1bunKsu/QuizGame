@@ -1,7 +1,7 @@
 
 // Phase 11: answer feedback timing and screen transitions.
 
-const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/refs/heads/main/questions/';
+const BASE = 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/main/questions/';
 
 const gameExtension = globalThis.QuizGameExtension ?? {};
 
@@ -246,6 +246,7 @@ function title(message = '') {
   gameExtension.onTitle?.();
   view.bind({
     onStart: startFromTitle,
+    onTutorial: name => { state.name = name; TutorialManager.menu(); },
     onSettings: name => {
       state.name = name;
       settings();
@@ -1066,7 +1067,7 @@ function showQuestion() {
   // ========================================
 
   if (
-    !gameExtension.isPractice?.() &&
+    !TutorialManager.active && !gameExtension.isPractice?.() &&
     GameModeManager.current.isFinalQuestion()
   ) {
     SoundManager.playSe('final');
@@ -1095,7 +1096,7 @@ function showQuestion() {
     return;
   }
 
-  void loadNationalRate(q);
+  if (!TutorialManager.active) void loadNationalRate(q);
 
   const limit = GameModeManager.current.timeLimit;
 
@@ -1112,6 +1113,8 @@ function showQuestion() {
     playerScore: GameModeManager.current.playerScore(),
     progress: !gameExtension.isPractice?.() && GameModeManager.current.showProgress ? progressMarkup() : null
   });
+
+  if (TutorialManager.active) new TutorialView(app).instruction(q);
 
   const ui = app.querySelector('#question-ui');
   const questionInstance = QuestionManager.create(q, ui);
@@ -1180,7 +1183,7 @@ function showQuestion() {
     // タイマー開始
     // ========================================
 
-    if (!gameExtension.overrideTimer?.()) {
+    if (!TutorialManager.active && !gameExtension.overrideTimer?.()) {
       timerManager.start(limit);
     }
   };
@@ -1274,7 +1277,8 @@ function quitGame() {
   correctRateManager.reset();
 
   // リザルト画面へ
-  result(true);
+  if (TutorialManager.active) TutorialManager.menu();
+  else result(true);
 }
 
 
@@ -1389,6 +1393,21 @@ function answer(value) {
                           : value === q.choices[0]
   );
 
+  if (TutorialManager.active) {
+    state.feedbackTimer = setTimeout(() => {
+      state.feedbackTimer = null;
+
+      SoundManager.playSe(correct ? "correct" : "incorrect");
+
+      hideQuestionText();
+
+      new QuestionView(app).showFeedback(correct, false);
+
+      TutorialManager.feedback(correct);
+    }, 1000);
+
+    return;
+  }
   finalizeNationalRate(q, correct, value === null);
 
   const earned = correct ? ScoreManager.points(q, state.timeLimit, state.remaining) : 0;

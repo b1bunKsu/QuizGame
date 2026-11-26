@@ -106,7 +106,7 @@ class ImageTouchQuestion extends BaseQuestion {
 
       const path = q.imagePath ?? q.image;
 
-      const url = /^https?:\/\//i.test(path)
+      const url = q.type === "IMAGE_TOUCH" && state.mode === "TUTORIAL" ? new URL(path, document.baseURI).href : /^https?:\/\//i.test(path)
          ? path
          : 'https://raw.githubusercontent.com/b1bunKsu/QuizQuestions/main/'
          + path.replace(/^\/+/, '');
