@@ -480,22 +480,27 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
     const DECAY_POWER = 1.0;
 
     // ガラス片の分割
-    const COLS = 21;
-    const ROWS = 7;
-    const SITE_JITTER_X = 0.375;
-    const SITE_JITTER_Y = 0.32;
+    const COLS = 27;
+    const ROWS = 9;
+    const SITE_JITTER_X = 1;
+    const SITE_JITTER_Y = 1;
 
     // 屈折による位置のずれ
-    const REFRACTION_X = 20;
-    const REFRACTION_Y = 20;
+    const REFRACTION_X = 128;
+    const REFRACTION_Y = 32;
 
     // 拡大・縮小
-    const MIN_ZOOM = 0.5;
-    const MAX_ZOOM = 2;
-    const ZOOM_SPEED = 0.7;
+    const MIN_ZOOM = 0.75;
+    const MAX_ZOOM = 1.5;
+    const ZOOM_SPEED = 0.5;
 
     // 回転
-    const MAX_ROTATION = 0.9;
+    const MAX_ROTATION = 1.2;
+
+    // ガウシアンぼかし
+    const MIN_BLUR = 0;
+    const MAX_BLUR = 3;
+    const BLUR_DECAY_POWER = 1.0;
 
     // 動作速度
     const MOTION_SPEED = 1.0;
@@ -704,17 +709,14 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
             path,
             edgePath,
 
-            phase: random(0, TAU),
+            // 屈折の強さだけガラス片ごとに変える
+            refractionScale: random(0.3, 1.0),
+            zoomScale: random(0.1, 2.0),
 
-            speed: random(
-                SPEED_MIN,
-                SPEED_MAX
-            ),
+            // ガラス片固有の回転角度
+            rotation: random(-MAX_ROTATION, MAX_ROTATION),
 
-            rotation: random(
-                -MAX_ROTATION,
-                MAX_ROTATION
-            ),
+            blur: random(MIN_BLUR, MAX_BLUR),
 
             shatterDelay: SHATTER_WAIT,
         };
@@ -846,23 +848,25 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
 
         for (const v of cells) {
 
-            const phase =
-                t * MOTION_SPEED * v.speed + v.phase;
+            // 全ガラス片で共通の位相
+            const phase = t * MOTION_SPEED;
 
-            // 屈折による位置のずれ
+            // 移動方向を統一
             const dx =
                 REFRACTION_X * strength
-                * Math.sin(phase);
+                * Math.sin(phase)
+                * v.refractionScale;
 
             const dy =
                 REFRACTION_Y * strength
-                * Math.cos(phase * Y_SPEED_RATIO);
+                * Math.cos(phase)
+                * v.refractionScale;
 
-            // 回転
+            // 回転方向を統一
             const angle =
                 v.rotation * strength;
 
-            // 拡大・縮小
+            // 拡大・縮小の周期を統一
             const wave =
                 Math.sin(phase * ZOOM_SPEED);
 
@@ -871,7 +875,12 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
                 : -wave * Math.log(MIN_ZOOM);
 
             const zoom =
-                Math.exp(strength * logZoom);
+                Math.exp(strength * logZoom * v.zoomScale);
+
+            // ガラス片内部を描画
+            // ガラス片ごとのぼかし量
+            const blur =
+                v.blur * Math.pow(strength, BLUR_DECAY_POWER);
 
             // ガラス片内部を描画
             ctx.save();
@@ -887,8 +896,12 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
             );
 
             ctx.rotate(angle);
-
             ctx.scale(zoom, zoom);
+
+            // ガウシアンぼかしを適用
+            ctx.filter = blur > 0.01
+                ? `blur(${blur}px)`
+                : 'none';
 
             ctx.drawImage(
                 source,
