@@ -502,6 +502,13 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
     const MAX_BLUR = 3;
     const BLUR_DECAY_POWER = 1.0;
 
+    // 縦横方向の独立した歪み
+    const MIN_STRETCH_X = 0.5;
+    const MAX_STRETCH_X = 2.0;
+
+    const MIN_STRETCH_Y = 0.5;
+    const MAX_STRETCH_Y = 2.0;
+
     // 動作速度
     const MOTION_SPEED = 1.0;
     const SPEED_MIN = 0.6;
@@ -719,6 +726,10 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
             blur: random(MIN_BLUR, MAX_BLUR),
 
             shatterDelay: SHATTER_WAIT,
+
+            // ガラス片固有の縦横拡大率
+            stretchX: random(MIN_STRETCH_X, MAX_STRETCH_X),
+            stretchY: random(MIN_STRETCH_Y, MAX_STRETCH_Y),
         };
     });
 
@@ -877,6 +888,13 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
             const zoom =
                 Math.exp(strength * logZoom * v.zoomScale);
 
+            // 縦横それぞれの拡大率
+            const scaleX =
+                zoom * Math.pow(v.stretchX, strength);
+
+            const scaleY =
+                zoom * Math.pow(v.stretchY, strength);
+
             // ガラス片内部を描画
             // ガラス片ごとのぼかし量
             const blur =
@@ -896,7 +914,7 @@ function createDynamicPrismEffect({ ctx, W, H, host, textSize, drawText, shardCt
             );
 
             ctx.rotate(angle);
-            ctx.scale(zoom, zoom);
+            ctx.scale(scaleX, scaleY);
 
             // ガウシアンぼかしを適用
             ctx.filter = blur > 0.01
